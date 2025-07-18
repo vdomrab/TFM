@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<launchConfiguration type="org.eclipse.pde.ui.EquinoxLauncher">
+    <booleanAttribute key="append.args" value="true"/>
+    <booleanAttribute key="automaticAdd" value="true"/>
+    <booleanAttribute key="automaticValidate" value="true"/>
+    <stringAttribute key="bootstrap" value=""/>
+    <stringAttribute key="checked" value="[NONE]"/>
+    <booleanAttribute key="clearConfig" value="true"/>
+    <stringAttribute key="configLocation" value="${workspace_loc}/.metadata/.plugins/org.eclipse.pde.core/AutonomousPlane_simulation"/>
+    <booleanAttribute key="default" value="true"/>
+    <booleanAttribute key="default_auto_start" value="true"/>
+    <intAttribute key="default_start_level" value="4"/>
+    <setAttribute key="deselected_workspace_bundles">
+        <setEntry value="AutonomousCar.MAPEKLite"/>
+        <setEntry value="AutonomousCar.infraestructure"/>
+        <setEntry value="AutonomousCar.interfaces"/>
+        <setEntry value="AutonomousCar.simulation.console.commands"/>
+        <setEntry value="AutonomousCar.simulation.simulator"/>
+        <setEntry value="device.Engine"/>
+        <setEntry value="device.FrontDistanceSensor"/>
+        <setEntry value="device.HumanSensors"/>
+        <setEntry value="device.LIDAR"/>
+        <setEntry value="device.LeftDistanceSensor"/>
+        <setEntry value="device.LeftLineSensor"/>
+        <setEntry value="device.RearDistanceSensor"/>
+        <setEntry value="device.RightDistanceSensor"/>
+        <setEntry value="device.RightLineSensor"/>
+        <setEntry value="device.RoadSensor"/>
+        <setEntry value="device.Speedometer"/>
+        <setEntry value="device.Steering"/>
+        <setEntry value="driving.FallbackPlan.Emergency"/>
+        <setEntry value="driving.FallbackPlan.ParkInTheRoadShoulder"/>
+        <setEntry value="driving.L0.ManualDriving"/>
+        <setEntry value="driving.L1.AssistedDriving"/>
+        <setEntry value="driving.L2.AdaptiveCruiseControl"/>
+        <setEntry value="driving.L2.LaneKeepingAssist"/>
+        <setEntry value="driving.L3.CityChauffer"/>
+        <setEntry value="driving.L3.HighwayChauffer"/>
+        <setEntry value="driving.L3.TrafficJamChauffer"/>
+        <setEntry value="interaction.DashboardDisplay.VisualIcon"/>
+        <setEntry value="interaction.DashboardDisplay.VisualText"/>
+        <setEntry value="interaction.DashboardIcon"/>
+        <setEntry value="interaction.DriverDisplay.VisualIcon"/>
+        <setEntry value="interaction.DriverDisplay.VisualText"/>
+        <setEntry value="interaction.NotificationService"/>
+        <setEntry value="interaction.Seat.Copilot"/>
+        <setEntry value="interaction.Seat.Driver"/>
+        <setEntry value="interaction.Speakers.AuditoryBeep"/>
+        <setEntry value="interaction.Speakers.AuditorySound"/>
+        <setEntry value="interaction.SteeringWheel"/>
+    </setAttribute>
+    <booleanAttribute key="includeOptional" value="true"/>
+    <booleanAttribute key="org.eclipse.debug.core.ATTR_FORCE_SYSTEM_CONSOLE_ENCODING" value="false"/>
+    <booleanAttribute key="org.eclipse.jdt.launching.ATTR_ATTR_USE_ARGFILE" value="false"/>
+    <booleanAttribute key="org.eclipse.jdt.launching.ATTR_SHOW_CODEDETAILS_IN_EXCEPTION_MESSAGES" value="true"/>
+    <booleanAttribute key="org.eclipse.jdt.launching.ATTR_USE_START_ON_FIRST_THREAD" value="true"/>
+    <stringAttribute key="org.eclipse.jdt.launching.JRE_CONTAINER" value="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-21"/>
+    <stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="-os ${target.os} -ws ${target.ws} -arch ${target.arch} -nl ${target.nl} -consoleLog -console"/>
+    <stringAttribute key="org.eclipse.jdt.launching.SOURCE_PATH_PROVIDER" value="org.eclipse.pde.ui.workbenchClasspathProvider"/>
+    <stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Declipse.ignoreApp=true -Dosgi.noShutdown=true&#13;&#10;-Dsimulator.type=manual&#13;&#10;-Dmodelsrepository.folder=${workspace_loc}/RuntimeModelsRepository/AutonomousPlane/${current_date}/Models&#13;&#10;-Dmodelsrepository.folder=${workspace_loc}/RuntimeModelsRepository/AutonomousPlane/${current_date}/AdaptationReports&#13;&#10;-Dsimulator.verbose=false"/>
+    <stringAttribute key="pde.version" value="3.3"/>
+    <setAttribute key="selected_target_bundles">
+        <setEntry value="Java-json@default:default"/>
+        <setEntry value="es.upv.pros.tatami.adaptation.mapek.lite.redistributable@default:default"/>
+        <setEntry value="org.apache.felix.gogo.command@default:default"/>
+        <setEntry value="org.apache.felix.gogo.runtime@default:default"/>
+        <setEntry value="org.apache.felix.gogo.shell@default:default"/>
+        <setEntry value="org.eclipse.equinox.console@default:default"/>
+        <setEntry value="org.eclipse.osgi@1:true"/>
+    </setAttribute>
+    <setAttribute key="selected_workspace_bundles">
+        <setEntry value="AutonomousPlane.MAPEKLite@default:default"/>
+        <setEntry value="AutonomousPlane.infraestructure@default:default"/>
+        <setEntry value="AutonomousPlane.interfaces@default:default"/>
+        <setEntry value="AutonomousPlane.simulation.console.commands@default:default"/>
+        <setEntry value="AutonomousPlane.simulation.simulator@default:default"/>
+        <setEntry value="L0_ManualNavigation@default:default"/>
+        <setEntry value="device.AOASensor@default:default"/>
+        <setEntry value="device.AltitudeSensor@default:default"/>
+        <setEntry value="device.FADEC@default:default"/>
+        <setEntry value="device.RadioAltimeterSensor@default:default"/>
+        <setEntry value="interaction.NotificactionService@default:default"/>
+        <setEntry value="interaction.StallWarning@default:default"/>
+        <setEntry value="interaction.TAWS@default:default"/>
+    </setAttribute>
+    <booleanAttribute key="show_selected_only" value="false"/>
+    <booleanAttribute key="tracing" value="false"/>
+    <booleanAttribute key="useCustomFeatures" value="false"/>
+    <booleanAttribute key="useDefaultConfigArea" value="true"/>
+</launchConfiguration>

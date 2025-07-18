@@ -1,0 +1,12 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Interfaces
+Bundle-SymbolicName: AutonomousPlane.interfaces
+Bundle-Version: 1.0.0.qualifier
+Export-Package: autonomousplane.autopilot.interfaces,
+ autonomousplane.devices.interfaces,
+ autonomousplane.interaction.interfaces,
+ autonomousplane.interfaces,
+ autonomousplane.simulation.interfaces
+Automatic-Module-Name: AutonomousPlane.interfaces
+Bundle-RequiredExecutionEnvironment: JavaSE-21
