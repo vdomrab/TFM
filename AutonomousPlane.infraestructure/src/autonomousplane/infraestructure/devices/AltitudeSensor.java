@@ -10,19 +10,20 @@ import autonomousplane.infraestructure.autopilot.AbstractAltitudeRateListener;
 public class AltitudeSensor extends Thing implements IAltitudeSensor {
 
 	public static final String ALTITUDE = "altitude";
-	public static final double MAX_ALTITUDE = 13000.0; // Max altitude in meters
-	public static final double MIN_ALTITUDE = 0; // Max altitude in meters
 	public static final String VERTICAL_ACCELERATION = "vertical_acceleration"; // Altitude increase in meters per second
 	public static final String VERTICAL_SPEED = "vertical_speed"; // Altitude increase in meters per second
 	
-	public static final double MAX_VERTICAL_ACCELERATION = 10.0;  // ≈ +2.5 g
-	public static final double MIN_VERTICAL_ACCELERATION = -8.0; // ≈ -1.5 g
+	public static final double MAX_ALTITUDE = 13000.0; // Max altitude in meters
+	public static final double MIN_ALTITUDE = 0; // Max altitude in meters
+	public static final double MAX_VERTICAL_ACCELERATION = 3.0;  // ≈ +2.5 g
+	public static final double MIN_VERTICAL_ACCELERATION = -3.0; // ≈ -1.5 g
     private static final double PLANE_MASS = 70000 ; // Masa del avión en kg, un valor típico para un avión pequeño
 	public static final double MAX_THRUST_FORCE = 243000; // Maximum thrust force in Newtons
+	private final double GRAVITY = 9.81; // m/s2
 	public static final double WING_AREA = 124.6; // m"2
-	public static final double MAX_VERTICAL_SPEED = 5.0; // Maximum vertical speed in m/s
-	public static final double MIN_VERTICAL_SPEED = -15.0; // Minimum vertical speed in m/s
-	
+	public static final double MAX_VERTICAL_SPEED = 7.6; // Maximum vertical speed in m/s
+	public static final double MIN_VERTICAL_SPEED = -7.6; // Minimum vertical speed in m/s
+
 	//protected AltitudeRateListener listener = null;
 	
 	public AltitudeSensor(BundleContext context, String id) {
@@ -83,7 +84,7 @@ public class AltitudeSensor extends Thing implements IAltitudeSensor {
 		return altitudeRate;
 	}
 	// Java
-	public double calculateVerticalAcceleration(
+	/*public double calculateVerticalAcceleration(
 	    double thrust,            // porcentaje de thrust (0–100)
 	    double pitchDegrees,      // ángulo de cabeceo
 	    double airDensity,        // ρ en kg/m³ (ISA)
@@ -109,10 +110,50 @@ public class AltitudeSensor extends Thing implements IAltitudeSensor {
 
 	    double netVerticalForce = FThrustVertical + FLiftVertical - FDragVertical - weight;
 	    double verticalAcceleration = netVerticalForce / PLANE_MASS;
-	    verticalAcceleration = verticalAcceleration * 0.5;
+	    verticalAcceleration = verticalAcceleration * 0.35;
 	    // Clamp to realistic values
 	    return Math.max(MIN_VERTICAL_ACCELERATION, Math.min(verticalAcceleration, MAX_VERTICAL_ACCELERATION));
-	}
+	}*/
+	public double calculateVerticalAcceleration(
+		    double thrust,            // porcentaje de thrust (0–100)
+		    double pitchDegrees,      // ángulo de cabeceo
+		    double airDensity,        // ρ en kg/m³ (ISA)
+		    double speed,             // Velocidad total del avión (TAS)
+		    double aoa               // Ángulo de ataque en grados
+		) {
+		    double pitchRad = Math.toRadians(pitchDegrees);
+		    double aoaRad = Math.toRadians(aoa);
+		    double thrustN = (thrust / 100.0) * MAX_THRUST_FORCE;
+
+		    // === COMPONENTE VERTICAL DEL EMPUJE ===
+		    double FThrustVertical = thrustN * Math.sin(pitchRad);
+
+		    // === LIFT PERPENDICULAR AL FLUJO ===
+		    double lift = 0.5 * airDensity * Math.pow(speed, 2) * calculateLiftCoefficient(aoaRad) * WING_AREA;
+
+		    // === PROYECTAR LIFT EN VERTICAL (respecto al suelo) ===
+		    // Lift actúa perpendicular al flujo, así que en vertical es:
+		    double FLiftVertical = lift * Math.cos(aoaRad);
+
+		    // === DRAG COMPLETO (opuesto al flujo) ===
+		    double dragCoefficient = 0.03;
+		    double drag = 0.5 * airDensity * Math.pow(speed, 2) * dragCoefficient * WING_AREA;
+
+		    // Proyección vertical del drag (opuesto a trayectoria, no solo pitch)
+		    double FDragVertical = drag * Math.sin(pitchRad);  // Aprox, si no calculás flight path angle directamente
+
+		    // === PESO DEL AVIÓN ===
+		    double weight = PLANE_MASS * 9.81;
+
+		    // === FUERZA NETA EN VERTICAL ===
+		    double netVerticalForce = FThrustVertical + FLiftVertical - FDragVertical - weight;
+
+		    // === ACELERACIÓN VERTICAL ===
+		    double verticalAcceleration = netVerticalForce / PLANE_MASS;
+
+		    // === LIMITAR A RANGOS FÍSICOS REALISTAS ===
+		    return Math.max(MIN_VERTICAL_ACCELERATION, Math.min(verticalAcceleration, MAX_VERTICAL_ACCELERATION));
+		}
 	
 	protected double calculateLiftCoefficient(double aoaRad) {
 	    final double aoaCriticalRad = Math.toRadians(15.0); // Stall típico

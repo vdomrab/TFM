@@ -7,8 +7,12 @@ import autonomousplane.devices.interfaces.IAOASensor;
 import autonomousplane.devices.interfaces.IAltitudeSensor;
 import autonomousplane.devices.interfaces.IAttitudeSensor;
 import autonomousplane.devices.interfaces.IControlSurfaces;
+import autonomousplane.devices.interfaces.IEGTSensor;
 import autonomousplane.devices.interfaces.IFADEC;
+import autonomousplane.devices.interfaces.IFuelSensor;
+import autonomousplane.devices.interfaces.ILandingSystem;
 import autonomousplane.devices.interfaces.INavigationSystem;
+import autonomousplane.devices.interfaces.IProximitySensor;
 import autonomousplane.devices.interfaces.IRadioAltimeterSensor;
 import autonomousplane.devices.interfaces.ISpeedSensor;
 import autonomousplane.devices.interfaces.IWeatherSensor;
@@ -19,7 +23,7 @@ import autonomousplane.infraestructure.devices.RadioAltimeterSensor;
 import autonomousplane.simulation.interfaces.ISimulationElement;
 
 public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
-	public static double time_step = 1;
+	protected static double time_step = 1;
 	public static final double MIN_TIME_STEP = 0.1; // Minimum time step in seconds
 	public static final double MAX_TIME_STEP = 10.0; // Maximum time step in seconds
 	protected BundleContext context;
@@ -33,6 +37,11 @@ public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
     IFADEC fadec;
     INavigationSystem navigationSystem;
     IWeatherSensor weatherSensor;
+    IFuelSensor fuelSensor;
+    IEGTSensor egtSensor;
+    ILandingSystem landingSystem;
+    IProximitySensor proximitySensor;
+    
 	public PlaneSimulationElement(BundleContext context, String id) {
 		  	super(context, id);
 			this.context = context;
@@ -48,6 +57,10 @@ public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
 	        fadec = OSGiUtils.getService(context, IFADEC.class);
 	        navigationSystem = OSGiUtils.getService(context, INavigationSystem.class);
 	        weatherSensor = OSGiUtils.getService(context, IWeatherSensor.class);
+	        fuelSensor = OSGiUtils.getService(context, IFuelSensor.class);
+	        egtSensor = OSGiUtils.getService(context, IEGTSensor.class);
+	        landingSystem = OSGiUtils.getService(context, ILandingSystem.class);
+	        proximitySensor = OSGiUtils.getService(context, IProximitySensor.class);
 	   }
 
 	public static void setTimeStepSeconds(double timeStepSeconds) {
@@ -94,36 +107,15 @@ public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
 		if(this.attitudeSensor != null ) {
 	        double roll = this.attitudeSensor.getRoll();
 	        double yaw = this.attitudeSensor.getYaw();
+			double pitch = this.attitudeSensor.getPitch();
+
 			this.attitudeSensor.setRoll(roll + attitudeSensor.getRollRate() * timeStepSeconds);
 			this.attitudeSensor.setYaw(yaw + attitudeSensor.getYawRate() * timeStepSeconds);
-			double aoa = this.aoaSensor.calculateAOA(this.speedSensor.getSpeedTAS(), this.altimeterSensor.getVerticalSpeed(), this.attitudeSensor.getPitch());
-			double pitch = this.attitudeSensor.getPitch();
-		    boolean inStall = aoa >= 15;
-		    double pitchRate = this.attitudeSensor.getPitchRate();
-
-		    if (inStall && pitch >= 0) {		        // Si estamos en pérdida, ajustamos el ángulo de cabeceo a un valor seguro
-		    	  // Forzamos caída del morro
-		        double densityFactor = this.attitudeSensor.calculateDensityFactor(this.weatherSensor);
-		        double autoNoseDown = -2.0 * densityFactor; // puedes ajustar este valor
-		        pitchRate += autoNoseDown;
-		    }
-			this.attitudeSensor.setPitch(pitch + pitchRate * timeStepSeconds);
+			this.attitudeSensor.setPitch(pitch + this.attitudeSensor.getPitchRate() * timeStepSeconds);
+			System.out.println("PlaneSimulationElement onSimulationStep: " + this.attitudeSensor.getRoll() + " " + this.attitudeSensor.getYaw() + " " + this.attitudeSensor.getPitch());
 		}
 	
-		/*if (speedSensor != null) {
-		    double currentSpeed = speedSensor.getSpeed();
-		    double targetSpeed = speedSensor.getTargetSpeed();
-		    double speedIncrease = speedSensor.getSpeedIncrease();
-
-		    if (speedIncrease != 0 && currentSpeed != targetSpeed) {
-		        speedSensor.setSpeed(currentSpeed + speedIncrease);
-		    } else if (currentSpeed == targetSpeed) {
-		        speedSensor.setSpeedIncrease(0.0); // Mantén velocidad sin aceleración
-		    }
-		    
-		  
-		    
-		}*/
+		
 		if(speedSensor != null && weatherSensor != null && fadec != null && attitudeSensor != null && controlSurfaces != null) {
 			double acceleration = speedSensor.getSpeedIncreaseTAS();
 			double deltaSpeedMS = acceleration * timeStepSeconds; // m/s
@@ -166,7 +158,7 @@ public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
 				    altimeterSensor.setVerticalSpeed(newVerticalSpeed);
 
 				    // ✅ Ahora actualizamos la altitud con el nuevo verticalSpeed y deltaTime
-				    double deltaH = newVerticalSpeed * timeStepSeconds;
+				    double deltaH = altimeterSensor.getVerticalSpeed() * timeStepSeconds;
 				    double newAltitude = altimeterSensor.getAltitude() + deltaH;
 				    altimeterSensor.setAltitude(newAltitude);
 				    
@@ -179,6 +171,10 @@ public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
 
 				 
 			}
+			if(this.radioAltimeterSensor.getGroundDistance()  > 150.0 && this.proximitySensor != null) {
+				// Si la distancia al suelo es mayor a 150 metros, ya no hay objeto detectado
+				proximitySensor.setObjectDetected(false);
+			} 
 		        
 		}
 			
@@ -202,8 +198,23 @@ public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
 		    
 		}
 		//Actualizacion de la distancia recorrida
+		if(this.fuelSensor != null) {
+			double fuelConsumed = this.fuelSensor.getFuelConsumptionRate() * timeStepSeconds; // Consumo en kg
+			this.fuelSensor.consumeFuel(fuelConsumed); // Actualizar el nivel de combustible
+			// Actualizar el consumo de combustible
+			
+		}
 		
-	
+		
+		if(this.fadec != null && this.weatherSensor != null && this.attitudeSensor != null && this.controlSurfaces != null && this.speedSensor != null) 
+		{	
+			this.egtSensor.updateTemperature(
+		        fadec.getCurrentThrust(),
+		        weatherSensor.getTemperature(),
+		        weatherSensor.calculatePressureHpa(),
+		        weatherSensor.getHumidity());
+		}
+		
 		
 		
 		
@@ -230,6 +241,14 @@ public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
 	        navigationSystem = OSGiUtils.getService(context, INavigationSystem.class);
 	    if (weatherSensor == null)
 	        weatherSensor = OSGiUtils.getService(context, IWeatherSensor.class);
+	    if (fuelSensor == null)
+	    	fuelSensor = OSGiUtils.getService(context, IFuelSensor.class);
+	    if (egtSensor == null)
+	    	egtSensor = OSGiUtils.getService(context, IEGTSensor.class);
+	    if (landingSystem == null)
+	    	landingSystem = OSGiUtils.getService(context, ILandingSystem.class);
+	    if (proximitySensor == null)
+	    	proximitySensor = OSGiUtils.getService(context, IProximitySensor.class);
 	}
 
 

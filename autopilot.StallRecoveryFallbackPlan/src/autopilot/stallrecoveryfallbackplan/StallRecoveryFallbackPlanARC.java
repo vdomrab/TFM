@@ -3,11 +3,13 @@ package autopilot.stallrecoveryfallbackplan;
 import org.osgi.framework.BundleContext;
 
 import autonomousplane.autopilot.interfaces.IStallRecoveryFallbackPlan;
+import autonomousplane.devices.interfaces.IAOASensor;
 import autonomousplane.devices.interfaces.IAltitudeSensor;
 import autonomousplane.devices.interfaces.IAttitudeSensor;
 import autonomousplane.devices.interfaces.IControlSurfaces;
 import autonomousplane.devices.interfaces.IFADEC;
 import autonomousplane.devices.interfaces.ISpeedSensor;
+import autonomousplane.devices.interfaces.IWeatherSensor;
 import autonomousplane.infraestructure.autopilotARC.FallbackPlanARC;
 import es.upv.pros.tatami.adaptation.mapek.lite.ARC.artifacts.interfaces.IAdaptiveReadyComponent;
 import es.upv.pros.tatami.osgi.utils.logger.SmartLogger;
@@ -19,7 +21,10 @@ public class StallRecoveryFallbackPlanARC extends FallbackPlanARC {
 	public static String REQUIRED_ATTITUDESENSOR = "required_attitudesensor";
 	public static String REQUIRED_SPEEDSENSOR = "required_speedsensor";
 	public static String REQUIRED_ALTITUDESENSOR = "required_altitudesensor";
-	
+	public static String REQUIRED_AOASENSOR = "required_aoasensor";
+	public static String REQUIRED_WEATHERSENSOR = "required_weathersensor";
+	public static String REQUIRED_NOTIFICATIONSERVICE = "required_notificationservice";
+
 	public StallRecoveryFallbackPlanARC(BundleContext context, String bundleId) {
 		super(context, context.getBundle().getSymbolicName());
 		logger = SmartLogger.getLogger(context.getBundle().getSymbolicName());
@@ -42,6 +47,14 @@ public class StallRecoveryFallbackPlanARC extends FallbackPlanARC {
 			this.getTheStallRecoveryFallbackPlanFlyingService().setSpeedSensor((ISpeedSensor) value);
 		else if (req.equals(REQUIRED_ALTITUDESENSOR))
 			this.getTheStallRecoveryFallbackPlanFlyingService().setAltitudeSensor((IAltitudeSensor) value);
+		else if (req.equals(REQUIRED_AOASENSOR))
+			this.getTheStallRecoveryFallbackPlanFlyingService().setAOASensor((IAOASensor) value);
+		else if (req.equals(REQUIRED_WEATHERSENSOR))
+			this.getTheStallRecoveryFallbackPlanFlyingService().setWeatherSensor((IWeatherSensor) value); // Assuming weather sensor is a generic object
+		else if (req.equals(REQUIRED_NOTIFICATIONSERVICE))
+			this.getTheStallRecoveryFallbackPlanFlyingService().setNotificationService((autonomousplane.interaction.interfaces.INotificationService) value);
+		else
+			logger.error("Unknown service required: " + req);
 		
 		return super.bindService(req, value);
 	}
@@ -58,6 +71,15 @@ public class StallRecoveryFallbackPlanARC extends FallbackPlanARC {
 			this.getTheStallRecoveryFallbackPlanFlyingService().setSpeedSensor(null);
 		else if (req.equals(REQUIRED_ALTITUDESENSOR))
 			this.getTheStallRecoveryFallbackPlanFlyingService().setAltitudeSensor(null);
+		else if (req.equals(REQUIRED_AOASENSOR))
+			this.getTheStallRecoveryFallbackPlanFlyingService().setAOASensor(null);
+		else if (req.equals(REQUIRED_WEATHERSENSOR))
+			this.getTheStallRecoveryFallbackPlanFlyingService().setWeatherSensor(null);
+		else if (req.equals(REQUIRED_NOTIFICATIONSERVICE))
+			this.getTheStallRecoveryFallbackPlanFlyingService().setNotificationService(null);
+		else
+			logger.error("Unknown service required: " + req);
+		
 		return super.unbindService(req, value);
 	}
 

@@ -34,8 +34,8 @@ public class AHRSSensor extends Thing implements IAttitudeSensor{
 	public static final double MAX_ROLL = 45.0;
 	public static final double MIN_ROLL = -45.0;
 
-	public static final double MAX_YAW = 30.0;
-	public static final double MIN_YAW = -30.0;
+	public static final double MAX_YAW = 360;
+	public static final double MIN_YAW = 0;
 	// Angular rate limits
 	public static final double MAX_ROLL_RATE = 25.0;
 	public static final double MIN_ROLL_RATE = -25.0;
@@ -107,7 +107,7 @@ public class AHRSSensor extends Thing implements IAttitudeSensor{
 	}
 	@Override
 	public IAttitudeSensor setYaw(double yaw) {
-		double clampedYaw = Math.max(MIN_YAW, Math.min(yaw, MAX_YAW));
+		double clampedYaw = normalizeYaw(yaw);
 		this.setProperty(YAW_ANGLE, clampedYaw);
 		return this;
 	}
@@ -156,6 +156,15 @@ public class AHRSSensor extends Thing implements IAttitudeSensor{
 		return Math.sqrt(airDensity / rhoISA); // factor más realista para aerodinámica
 		
 	}
+	
+	public double normalizeYaw(double yawDegrees) {
+	    yawDegrees = yawDegrees % 360.0;
+	    if (yawDegrees < 0) {
+	        yawDegrees += 360.0;
+	    }
+	    return yawDegrees;
+	}
+
 	 class ControlSurfaceListener implements ServiceListener {
 			private BundleContext context = null;
 			private AHRSSensor sensor = null;
@@ -182,17 +191,22 @@ public class AHRSSensor extends Thing implements IAttitudeSensor{
 			    ServiceReference<?> ref = event.getServiceReference();
 			    IControlSurfaces control = (IControlSurfaces) context.getService(ref);
 			    IWeatherSensor weatherSensor = getService(IWeatherSensor.class);    
-			    if(control == null || weatherSensor == null) {
+			    if(control == null ) {
 			        return; // No control surfaces or weather sensor available
 			    }
-			    
-			   
-			    double densityFactor = sensor.calculateDensityFactor(weatherSensor);    
-			    
-			    double rollRate = control.getAileronDeflection() * 1.0 * densityFactor;   // alerones: ±20° → ±20°/s ajustado por densidad
-			    double pitchRate = control.getElevatorDeflection() * 0.6 * densityFactor; // elevador: ±15° → ±9°/s ajustado por densidad
-			    double yawRate = control.getRudderDeflection() * 0.4 * densityFactor;     // timón: ±25° → ±10°/s ajustado por densidad
-
+			    double rollRate = 0.0;
+			    double pitchRate = 0.0;
+			    double yawRate = 0.0;
+			    if (weatherSensor == null) {
+			    		rollRate = control.getAileronDeflection() * 1.0 ;   
+					    pitchRate = control.getElevatorDeflection() * 0.6 ; 
+					    yawRate = control.getRudderDeflection() * 0.4 ;    
+			    }else {  
+			    		double densityFactor = sensor.calculateDensityFactor(weatherSensor);    		    
+			     		rollRate = control.getAileronDeflection() * 1.0 * densityFactor;   
+			     		pitchRate = control.getElevatorDeflection() * 0.6 * densityFactor; 
+			     		yawRate = control.getRudderDeflection() * 0.4 * densityFactor;    
+			    }
 			    switch (event.getType()) {
 			        case ServiceEvent.REGISTERED:
 			        case ServiceEvent.MODIFIED:

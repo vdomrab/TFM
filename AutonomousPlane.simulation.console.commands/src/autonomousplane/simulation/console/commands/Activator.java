@@ -120,8 +120,64 @@ public class Activator implements BundleActivator {
 					//  Ejemplos:
 					//					      groundTemperature set 22.5
 					//					      groundTemperature get
-					"groundTemperature",// sensor de clima (WeatherSensor)
-					
+					"groundTemperature",
+					// fuelLevel : establece el nivel de combustible del avión durante la fase de despegue
+					//
+					//  Modo uso
+					//		 fuelLevel kg [ double ]
+					//		 fuelLevel percentage [ double ]
+					//
+					//  Permite modificar la cantidad de combustible disponible, expresada en kilogramos o en porcentaje, 
+					//  mediante el sensor de combustible (IFuelSensor). Solo puede ser invocado durante la fase de vuelo TAKEOFF.
+					//  El valor en kilogramos debe estar entre 0 y FuelSensor.MAX_FUEL_KG (por defecto 26.000 kg).
+					//  El valor en porcentaje debe estar entre 0 y 100%.
+					//
+					//  Ejemplos:
+					//       fuelLevel kg 18000.0
+					//       fuelLevel percentage 75.0
+					"fuelLevel",
+					// setCloud : establece si el avión se encuentra dentro de una nube.
+					//
+					//  Modo uso
+					//					       setCloud true   [ boolean ]
+					//					       setCloud false  [ boolean ]
+					//
+					//  Permite modificar manualmente el estado de nubosidad local mediante el sensor meteorológico (IWeatherSensor). 
+					//  Esta función activa o desactiva la presencia de nubes en la ubicación actual del avión, lo cual puede afectar 
+					//  condiciones de vuelo como riesgo de formación de hielo o visibilidad.
+					//
+					//  Si el valor es true, el sensor indicará que el avión se encuentra dentro de una nube y se considerará una humedad relativa alta (≈ 100%).
+					//  Si el valor es false, el avión estará en aire claro.
+					//
+					//  Este método puede utilizarse para pruebas o simulación de condiciones meteorológicas específicas.
+					//
+					//  Ejemplos:
+					//					       setCloud true
+					//					       setCloud false
+					"setCloud",
+					// objectDetected : establece si se ha detectado un objeto en las proximidades del avión.
+					//
+					//  Modo uso
+					//					       objectDetected true   [ boolean ]
+					//					       objectDetected false  [ boolean ]
+					//
+					//  Permite modificar manualmente el estado de detección de objetos mediante el sensor de proximidad (IProximitySensor). 
+					//  Este método modifica la presencia de objetos cercanos al avión, lo cual puede influir en la navegación y seguridad del vuelo.
+					//
+					//  Restricción: por seguridad y realismo, la detección de objetos solo se permite si el avión se encuentra a una 
+					//  altitud igual o inferior a 150 metros (≈ 500 pies), ya que a mayores alturas no se espera la presencia de obstáculos 
+					//  físicos relevantes. Si se intenta activar la detección fuera de este rango, la solicitud será ignorada.
+					//
+					//  Si el valor es true, el sensor indicará que hay un objeto próximo al avión.
+					//  Si el valor es false, no se detectará ningún objeto cercano.
+					//
+					//  Este método puede utilizarse para pruebas o simulación de situaciones como tráfico en pista, obstáculos en la zona de aterrizaje
+					//  o pruebas de reacción automática ante obstáculos.
+					//
+					//  Ejemplos:
+					//					       objectDetected true
+					//					       objectDetected false
+					"objectDetected",
 				//	
 				// CONTROL MANUAL DEL VEHÍCULO
 				//	
@@ -166,6 +222,36 @@ public class Activator implements BundleActivator {
 					//		  descend fast     → Pitch negativo pronunciado (~-12°) y velocidad alta (~700 km/h)
 
 					"descend",
+					// setCooling : activa o desactiva el sistema de refrigeración del motor.
+					//
+					//  Modo uso
+					//					       setCooling true   [ boolean ]
+					//					       setCooling false  [ boolean ]
+					//
+					//  Permite habilitar o deshabilitar manualmente el sistema de enfriamiento (cooling) del motor a través del sensor de temperatura 
+					//  de gases de escape (IEGTSensor). Este sistema se utiliza para reducir la temperatura del motor en condiciones de alta carga térmica.
+					//
+					//  El valor debe ser booleano: true para activar la refrigeración, false para desactivarla.
+					//
+					//  Ejemplos:
+					//					       setCooling true
+					//					       setCooling false
+					"setCooling", 
+					// setHeating : activa o desactiva el sistema de calefacción del motor.
+					//
+					//  Modo uso
+					//					       setHeating true   [ boolean ]
+					//					       setHeating false  [ boolean ]
+					//
+					//  Permite habilitar o deshabilitar manualmente el sistema de calefacción (heating) del motor mediante el sensor de temperatura 
+					//  de gases de escape (IEGTSensor). Este sistema se usa para evitar congelación del motor en condiciones de baja temperatura.
+					//
+					//  El valor debe ser booleano: true para activar la calefacción, false para desactivarla.
+					//
+					//  Ejemplos:
+					//					       setHeating true
+					//					       setHeating false
+					"setHeating",
 					
 					
 				//	

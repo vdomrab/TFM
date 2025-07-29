@@ -16,4 +16,12 @@ public interface IWeatherSensor {
 	public IWeatherSensor setActualClimate(EClimate actualClimate);
 	public EClimate getActualClimate();
 	public double calculateTemp(double altitude);
+	public IWeatherSensor setHumidity(double humidity);
+	public double getHumidity();
+	public double calculateHumidity(double altitudeMeters);
+	public IWeatherSensor setHPA(double hPa);
+	public double getHPA();
+	public double calculatePressureHpa();
+	public IWeatherSensor setInCloud(boolean inCloud);
+	public boolean isInCloud();
 }

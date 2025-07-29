@@ -8,5 +8,6 @@ public interface INotificationService extends IIdentifiable {
 	
 	public INotificationService addInteractionMechanism(String mechanism);
 	public INotificationService removeInteractionMechanism(String mechanism);
+	public boolean isMechanismAvailable(String id);
 
 }

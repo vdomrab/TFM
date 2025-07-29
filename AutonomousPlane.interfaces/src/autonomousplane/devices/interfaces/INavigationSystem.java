@@ -10,7 +10,9 @@ public interface INavigationSystem {
 	
 	INavigationSystem setTotalDistance(double totalDistance);
 	INavigationSystem setCurrentDistance(double currentDistance);
+
 	INavigationSystem calcualteCurrentDistance(double speed);
 	EFlyingStages calculateTheFlyingStage(double altitude);
 	INavigationSystem setCurrentFlyghtStage(EFlyingStages stage);
+	
 }

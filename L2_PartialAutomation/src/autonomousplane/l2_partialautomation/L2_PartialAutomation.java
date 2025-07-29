@@ -23,179 +23,230 @@ public class L2_PartialAutomation extends L2_FlyingService implements IL2_Partia
 
 
 
-
 	@Override
 	public IFlyingService performTheFlyingFunction() {
-		logger.info("Performing partial automation...");
-		boolean correction_required = false;
+	    logger.info("Performing partial automation...");
+	    boolean correctionRequired = false;
 
-		// Actualizacion de los angulos
+	    double pitch = this.AHRSSensor.getPitch();
+	    double roll = this.AHRSSensor.getRoll();
 
-		double pitch = this.AHRSSensor.getPitch();
-        double roll = this.AHRSSensor.getRoll();
-        double yaw = this.AHRSSensor.getYaw();
-		
-		
-		if(this.getStabilityModeActive() ) {
-	        double SAFE_PITCH_MIN = -4.9;
-	        double SAFE_PITCH_MAX = 9.9;
-	        double SAFE_ROLL_MIN = -8;
-	        double SAFE_ROLL_MAX = 8;
-	        double MIN_ROLL_ERROR_THRESHOLD = 0.1; // degrees
-	        double correctionTime = PlaneSimulationElement.getTimeStep() * 2;
+	    if (this.getStabilityModeActive()) {
+	        correctionRequired |= correctRollIfNeeded(roll);
 
-	        if (roll >= SAFE_ROLL_MIN && roll <= SAFE_ROLL_MAX) {
-	            this.getControlSurfaces().setAileronDeflection(0.0);
-	            logger.info("Roll within safe range, aileron neutral.");
-	        } else {
-	            double densityFactor = this.getAHRSSensor().calculateDensityFactor(this.getWeatherSensor());
-	            double desiredRoll;
-	            if (roll > SAFE_ROLL_MAX) {
-	                // Too much positive roll, correct negatively
-	                desiredRoll = clamp(roll - 1.5, SAFE_ROLL_MAX, SAFE_ROLL_MIN);
-	            } else {
-	                // Too much negative roll, correct positively
-	                desiredRoll = clamp(roll + 1.5, SAFE_ROLL_MAX, SAFE_ROLL_MIN);
-	            }
-	            double rollError = desiredRoll - roll;
-	            double desiredRollRate = rollError / correctionTime;
-	            double requiredDeflection = desiredRollRate / (1.0 * densityFactor);
-	            requiredDeflection = clamp(requiredDeflection, 15.0, -15.0);
-
-	            if (Math.abs(rollError) < MIN_ROLL_ERROR_THRESHOLD) {
-	                this.getControlSurfaces().setAileronDeflection(0.0);
-	            } else {
-	                this.getControlSurfaces().setAileronDeflection(requiredDeflection);
-	                logger.info(String.format(
-	                    "Roll correction: roll=%.2f°, desired=%.2f°, deflection=%.2f°",
-	                    roll, desiredRoll, requiredDeflection
-	                ));
-	            }
+	        EFlyingStages stage = this.navigationSystem.getCurrentFlyghtStage();
+	        switch (stage) {
+	            case CLIMB:
+	                correctionRequired |= handleClimbPhase(pitch);
+	                break;
+	            case DESCENT:
+	                correctionRequired |= handleDescentPhase(pitch);
+	                break;
+	            case CRUISE:
+	                adjustPitchThrustToMaintainAltitudeAndSpeedCruise();
+	                break;
+	            default:
+	                break; // Other phases ignored here
 	        }
-	        if (this.navigationSystem.getCurrentFlyghtStage() == EFlyingStages.CLIMB) {
-	            SAFE_PITCH_MIN = 11.9;
-	            SAFE_PITCH_MAX = 15.1;
-	            boolean unstablePitch = pitch < SAFE_PITCH_MIN || pitch > SAFE_PITCH_MAX;
-	            if (unstablePitch) {
-	                correction_required = true;
-	                double densityFactor = this.getAHRSSensor().calculateDensityFactor(this.getWeatherSensor());
-	                double desiredPitch;
-	                if (pitch > SAFE_PITCH_MAX) {
-	                    // Too much positive pitch, correct negatively
-	                    desiredPitch = clamp(pitch - 1.5, SAFE_PITCH_MAX, SAFE_PITCH_MIN);
-	                } else {
-	                    // Too much negative pitch, correct positively
-	                    desiredPitch = clamp(pitch + 1.5, SAFE_PITCH_MAX, SAFE_PITCH_MIN);
-	                }
-	                double pitchError = desiredPitch - pitch;
-	                double desiredPitchRate = pitchError / correctionTime;
-	                double requiredDeflection = desiredPitchRate / (0.6 * densityFactor);
 
-	                if (Math.abs(pitchError) < MIN_ROLL_ERROR_THRESHOLD) {
-	                    this.getControlSurfaces().setElevatorDeflection(0.0);
-	                } else {
-	                    logger.info(String.format("CLIMB: pitch correction -> current=%.2f°, error=%.2f°, deflection=%.2f°, densityFactor=%.3f",
-	                        pitch, pitchError, requiredDeflection, densityFactor));
-	                    logger.info("Correcting Pitch angle...");
-	                    this.getControlSurfaces().setElevatorDeflection(requiredDeflection);
-	                }
-	            } else {
-	                this.getControlSurfaces().setElevatorDeflection(0.0);
-	            }
+	        correctionRequired |= checkTerrainAwareness(stage, radioAltimeterSensor.getGroundDistance(), altimeterSensor.getVerticalSpeed());
+	        correctionRequired |= handleStallWarnings();
 
-	            // Asegurar thrust correcto
-	            if (this.getFADEC().getCurrentThrust() < 85.0) {
-	                this.getFADEC().setTHRUSTPercentage(85.0);
-	                logger.info("CLIMB: increasing thrust to 85%");
-	            }
+	        if (!correctionRequired) {
+	            logger.info("Monitoring flying parameters. Nothing to warn ...");
+	        }
+	    }
 
-	            // Retraer frenos de aire si están activos
-	            if (this.getControlSurfaces().getAirbrakeDeployment() > 0.0) {
-	                this.getControlSurfaces().setAirbrakeDeployment(0.0);
-	                logger.info("CLIMB: retracting airbrakes.");
-	            }
-			} else if(this.navigationSystem.getCurrentFlyghtStage() == EFlyingStages.DESCENT) {
-				SAFE_PITCH_MIN = -15.0;
-			    SAFE_PITCH_MAX = 10.0;
+	    return this;
+	}
 
-			    boolean unstablePitch = pitch < SAFE_PITCH_MIN || pitch  > SAFE_PITCH_MAX;
-			    if (unstablePitch) {
-			        correction_required = true;
-			        double densityFactor = this.getAHRSSensor().calculateDensityFactor(this.getWeatherSensor());
-			        double desiredPitch;
-			        if (pitch > SAFE_PITCH_MAX) {
-			            // Too much positive pitch, correct negatively
-			            desiredPitch = clamp(pitch - 1.5, SAFE_PITCH_MAX, SAFE_PITCH_MIN);
-			        } else {
-			            // Too much negative pitch, correct positively
-			            desiredPitch = clamp(pitch + 1.5, SAFE_PITCH_MAX, SAFE_PITCH_MIN);
-			        }
-			        double pitchError = desiredPitch - pitch;
-			        double desiredPitchRate = pitchError / correctionTime;
-			        double requiredDeflection = desiredPitchRate / (0.6 * densityFactor);
+	private boolean correctRollIfNeeded(double roll) {
+	    final double SAFE_ROLL_MIN = -8.0;
+	    final double SAFE_ROLL_MAX = 8.0;
+	    final double MIN_ROLL_ERROR_THRESHOLD = 0.1;
+	    double correctionTime = PlaneSimulationElement.getTimeStep() * 2;
 
-			        if (Math.abs(pitchError) < MIN_ROLL_ERROR_THRESHOLD) {
-			            this.getControlSurfaces().setElevatorDeflection(0.0);
-			        } else {
-			            logger.info(String.format("DESCENT: pitch correction -> current=%.2f°, error=%.2f°, deflection=%.2f°, densityFactor=%.3f",
-			                pitch, pitchError, requiredDeflection, densityFactor));
-			            logger.info("Correcting Pitch angle...");
-			            this.getControlSurfaces().setElevatorDeflection(requiredDeflection);
-			        }
-			    } else {
-			        this.getControlSurfaces().setElevatorDeflection(0.0);
-			    }
+	    if (roll >= SAFE_ROLL_MIN && roll <= SAFE_ROLL_MAX) {
+	        this.getControlSurfaces().setAileronDeflection(0.0);
+	        logger.info("Roll within safe range, aileron neutral.");
+	        return false;
+	    }
 
-		         // Thrust para descenso 
-	            if(this.getFADEC().getCurrentThrust() < 20 || this.getFADEC().getCurrentThrust() > 30) {
-	                this.getFADEC().setTHRUSTPercentage(30);
-	                logger.info("Correcting Thrust...");// Aumentar potencia en ascenso
-	            }
-	            
-	            // Ajuste de frenos de aire para asistencia en descenso
-	            if(this.getControlSurfaces().getAirbrakeDeployment() < 0.5 
-	            		|| this.getControlSurfaces().getAirbrakeDeployment() > 0.75) {
-					this.getControlSurfaces().setAirbrakeDeployment(0.5); // Asistencia en descenso
-					logger.info("Adjusting airbrakes for descent assistance...");	            
-				}
-	            
-    	        
-			} else if(this.navigationSystem.getCurrentFlyghtStage() == EFlyingStages.CRUISE) {
-				adjustPitchThrustToMaintainAltitudeAndSpeedCruise();
-			}
-			
-			//Stall warning
-			if ( this.getAOASensor().getAOA() > 12 && this.getAOASensor().getAOA() < 15 ) {
-				correction_required = true;
-				logger.info("Plane approaching stall condition");
-				if ( this.getNotificationService() != null )
-					this.getNotificationService().notify("Plane approaching stall condition: " + this.getAOASensor().getAOA() );
-			}else if (this.getAOASensor().getAOA() >= 15) {
-				correction_required = true;
-				logger.info("Plane is in stall condition");
-				if ( this.getNotificationService() != null  )
-					this.getNotificationService().notify("Plane is in stall condition: " + this.getAOASensor().getAOA() );
-				if(this.getFallbackPlan() != null) {
-					this.activateTheFallbackPlan();
-				} else {
-					logger.error("No fallback plan available to handle stall condition.");
-				}
-			
-			}
-			
-			
-			if ( !correction_required ) {
-				logger.info("Monitoring flying parameters. Nothing to warn ...");
-			}
-			
-			
+	    double densityFactor = this.AHRSSensor.calculateDensityFactor(this.weatherSensor);
+	    double desiredRoll = roll > SAFE_ROLL_MAX ? clamp(roll - 1.5, SAFE_ROLL_MAX, SAFE_ROLL_MIN)
+	                                              : clamp(roll + 1.5, SAFE_ROLL_MAX, SAFE_ROLL_MIN);
+	    double rollError = desiredRoll - roll;
+	    double desiredRollRate = rollError / correctionTime;
+	    double requiredDeflection = clamp(desiredRollRate / (1.0 * densityFactor), 15.0, -15.0);
+
+	    if (Math.abs(rollError) < MIN_ROLL_ERROR_THRESHOLD) {
+	        this.getControlSurfaces().setAileronDeflection(0.0);
+	    } else {
+	        this.getControlSurfaces().setAileronDeflection(requiredDeflection);
+	        logger.info(String.format("Roll correction: roll=%.2f°, desired=%.2f°, deflection=%.2f°",
+	                                  roll, desiredRoll, requiredDeflection));
+	    }
+
+	    return true;
+	}
+
+	private boolean handleClimbPhase(double pitch) {
+	    final double SAFE_PITCH_MIN = 7.0;
+	    final double SAFE_PITCH_MAX = 13.0;
+	    boolean correctionDone = correctPitchIfNeeded(pitch, SAFE_PITCH_MIN, SAFE_PITCH_MAX, "CLIMB");
+
+	    if (this.getFADEC().getCurrentThrust() < 85.0) {
+	        this.getFADEC().setTHRUSTPercentage(85.0);
+	        logger.info("CLIMB: increasing thrust to 85%");
+	        correctionDone = true;
+	    }
+
+	    if (this.getControlSurfaces().getAirbrakeDeployment() > 0.0) {
+	        this.getControlSurfaces().setAirbrakeDeployment(0.0);
+	        logger.info("CLIMB: retracting airbrakes.");
+	        correctionDone = true;
+	    }
+
+	    return correctionDone;
+	}
+
+	private boolean handleDescentPhase(double pitch) {
+	    final double SAFE_PITCH_MIN = -7.0;
+	    final double SAFE_PITCH_MAX = -2.0;
+	    boolean correctionDone = correctPitchIfNeeded(pitch, SAFE_PITCH_MIN, SAFE_PITCH_MAX, "DESCENT");
+
+	    double currentThrust = this.getFADEC().getCurrentThrust();
+	    if (currentThrust < 20 || currentThrust > 30) {
+	        this.getFADEC().setTHRUSTPercentage(30.0);
+	        logger.info("DESCENT: correcting thrust to 30%");
+	    }
+
+	    double airbrake = this.getControlSurfaces().getAirbrakeDeployment();
+	    if (airbrake < 0.5 || airbrake > 0.75) {
+	        this.getControlSurfaces().setAirbrakeDeployment(0.5);
+	        logger.info("DESCENT: adjusting airbrakes for descent assistance.");
+	    }
+
+	    return correctionDone;
+	}
+
+	private boolean correctPitchIfNeeded(double pitch, double safeMin, double safeMax, String phase) {
+	    final double MIN_ERROR_THRESHOLD = 0.1;
+	    double correctionTime = PlaneSimulationElement.getTimeStep() * 2;
+
+	    if (pitch >= safeMin && pitch <= safeMax) {
+	        this.getControlSurfaces().setElevatorDeflection(0.0);
+	        return false;
+	    }
+
+	    double densityFactor = this.AHRSSensor.calculateDensityFactor(this.weatherSensor);
+	    double desiredPitch = pitch > safeMax ? clamp(pitch - 1.5, safeMax, safeMin)
+	                                          : clamp(pitch + 1.5, safeMax, safeMin);
+	    double pitchError = desiredPitch - pitch;
+	    double desiredPitchRate = pitchError / correctionTime;
+	    double requiredDeflection = desiredPitchRate / (0.6 * densityFactor);
+
+	    if (Math.abs(pitchError) < MIN_ERROR_THRESHOLD) {
+	        this.getControlSurfaces().setElevatorDeflection(0.0);
+	    } else {
+	        logger.info(String.format("%s: pitch correction -> current=%.2f°, error=%.2f°, deflection=%.2f°, densityFactor=%.3f",
+	                                  phase, pitch, pitchError, requiredDeflection, densityFactor));
+	        this.getControlSurfaces().setElevatorDeflection(requiredDeflection);
+	    }
+
+	    return true;
+	}
+
+	private boolean handleStallWarnings() {
+	    double aoa = this.getAOASensor().getAOA();
+	    if (aoa > 12 && aoa < 15) {
+	        notifyStallCondition("approaching stall condition", aoa);
+	        return true;
+	    } else if (aoa >= 15) {
+	        notifyStallCondition("is in stall condition", aoa);
+	        if (this.getFallbackPlan() != null) {
+	            this.activateTheFallbackPlan();
+	        } else {
+	            logger.error("No fallback plan available to handle stall condition.");
+	        }
+	        return true;
+	    }
+	    return false;
+	}
+
+	private void notifyStallCondition(String message, double aoa) {
+	    logger.info("Plane " + message);
+	    if (this.getNotificationService() != null && this.getNotificationService().isMechanismAvailable("StallWarning")) {
+	        this.getNotificationService().notify("Plane " + message + ": " + aoa);
+	    }
+	}
+
+	private double clamp(double value, double max, double min) {
+	    return Math.max(min, Math.min(value, max));
+	}
+
+	
+	public boolean checkTerrainAwareness(
+			EFlyingStages flyingStage,
+		    double agl,                  // Altura sobre el terreno (radio altímetro)
+		    double verticalSpeed        // Velocidad vertical (m/s       // Ground speed (opcional, pero útil)
+		) {
+		    // Valores por defecto
+		    double minAGLThreshold = 900.0;         // metros
+		    double maxDescentRate = -3.0;           // m/s
+		    double timeToImpactThreshold = 15.0;    // segundos
+
+		    // Ajustes según fase de vuelo
+		    switch (this.navigationSystem.getCurrentFlyghtStage()) {
+		    case EFlyingStages.CLIMB:
+		        minAGLThreshold = 600.0;    // margen amplio para evitar falsas alertas
+		        maxDescentRate = 0.0;       // no debería descender en climb
+		        timeToImpactThreshold = 12.0;
+		        break;
+
+		    case EFlyingStages.DESCENT:
+		        minAGLThreshold = 500.0;    // umbral razonable para alerta en descenso
+		        maxDescentRate = -5.0;      // permite descenso moderado (≈ -1000 ft/min)
+		        timeToImpactThreshold = 18.0;
+		        break;
+
+		    case EFlyingStages.CRUISE:
+		        minAGLThreshold = 1000.0;   // mínimo AGL esperado en crucero
+		        maxDescentRate = -1.0;      // casi sin descenso permitido en crucero
+		        timeToImpactThreshold = 10.0;
+		        break;
+
+		    case EFlyingStages.TAKEOFF:
+		        minAGLThreshold = 150.0;    // cercano al suelo en takeoff
+		        maxDescentRate = 0.0;       // no debería descender en takeoff
+		        timeToImpactThreshold = 10.0;
+		        break;
+
+		    default:
+		        // Para otras fases, mantenemos los valores por defecto
+		        break;
+		        
+		        
+		    }
+
+
+		    // Si estamos descendiendo (o con tasa negativa en ascenso/crucero)
+		    if (verticalSpeed < maxDescentRate && agl < minAGLThreshold) {
+		        double timeToImpact = agl / -verticalSpeed;
+
+		        if (timeToImpact < timeToImpactThreshold) {
+		        				            
+		        	   if (this.getNotificationService() != null &&  this.getNotificationService().isMechanismAvailable("TAWS")) {
+				         
+			                this.getNotificationService().notify("⚠️ ALERTA TAWS: TERRAIN — PULL UP");
+			                
+			                return true; // Activamos alerta TAWS
+			            }
+		        }
+		    }
+		    
+		    return false; // No se activó alerta TAWS
 		}
-		return this;
-	}
-
-	private double clamp(double rate, double maxRate, double min_rate) {
-	    return Math.max(min_rate, Math.min(rate, maxRate));
-	}
 	
 	public void adjustPitchThrustToMaintainAltitudeAndSpeedCruise() {
       

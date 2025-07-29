@@ -25,10 +25,11 @@ public class NotificationService extends Thing implements INotificationService {
 	public INotificationService notify(String message) {
 		if ( mechanisms == null || mechanisms.size() == 0 )
 			return this;
-		
-		for(String m : this.mechanisms) {
-			IInteractionMechanism mechanism = OSGiUtils.getService(context, IInteractionMechanism.class, String.format("(%s=%s)", IIdentifiable.ID, m));
-			mechanism.performTheInteraction(message);
+		for (String m : this.mechanisms) {
+		    IInteractionMechanism mechanism = OSGiUtils.getService(context, IInteractionMechanism.class, String.format("(%s=%s)", IIdentifiable.ID, m));
+		    if (mechanism != null) {
+		        mechanism.performTheInteraction(message);
+		    }
 		}
 		
 		return this;
@@ -40,7 +41,17 @@ public class NotificationService extends Thing implements INotificationService {
 		this.mechanisms.add(m);
 		return this;
 	}
-
+	
+	@Override
+	public boolean isMechanismAvailable(String id) {
+	    IInteractionMechanism mech = OSGiUtils.getService(
+	        context,
+	        IInteractionMechanism.class,
+	        String.format("(%s=%s)", IIdentifiable.ID, id)
+	    );
+	    return mech != null;
+	}
+	
 	@Override
 	public INotificationService removeInteractionMechanism(String m) {
 		this.mechanisms.remove(m);

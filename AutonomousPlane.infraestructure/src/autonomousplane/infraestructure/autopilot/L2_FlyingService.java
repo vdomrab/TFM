@@ -48,7 +48,7 @@ public abstract class L2_FlyingService extends L1_FlyingService implements IL2_F
 		return;
 	}
 	@Override
-	public void setGNSS(INavigationSystem sensor) {
+	public void setNavigationSystem(INavigationSystem sensor) {
 		this.navigationSystem = sensor;
 		return;
 	}
@@ -95,7 +95,7 @@ public abstract class L2_FlyingService extends L1_FlyingService implements IL2_F
 	public ISpeedSensor getSpeedSensor() {
 		return this.speedSensor;
 	}
-	public INavigationSystem getGNSS() {
+	public INavigationSystem getNavigationSystem() {
 		return this.navigationSystem;
 	}
 	public IFallbackPlan getFallbackPlan() {
@@ -135,7 +135,7 @@ public abstract class L2_FlyingService extends L1_FlyingService implements IL2_F
 			result = false;
 			logger.warn("The SpeedSensor is not set. The flying service cannot be performed.");
 		}
-		if(this.getGNSS() == null) {
+		if(this.getNavigationSystem() == null) {
 			result = false;
 			logger.warn("The GNSS NavigationSystem is not set. The flying service cannot be performed.");
 		}

@@ -28,10 +28,12 @@ public class FlyingServiceARC extends AdaptiveReadyComponent implements IAdaptiv
 		
 	@Override
 	public IAdaptiveReadyComponent deploy() {
+		
 		((Thing) this.getTheFlyingService()).registerThing();
 		this.getTheFlyingService().startFlight();
 		return super.deploy();
 	}
+	
 	
 	@Override
 	public IAdaptiveReadyComponent undeploy() {

@@ -13,6 +13,7 @@ import autonomousplane.autopilot.interfaces.IL0_ManualNavigation;
 import autonomousplane.devices.interfaces.*;
 import autonomousplane.infraestructure.OSGiUtils;
 import autonomousplane.infraestructure.devices.AOASensor;
+import autonomousplane.infraestructure.devices.FuelSensor;
 import autonomousplane.infraestructure.devices.RadioAltimeterSensor;
 import autonomousplane.infraestructure.devices.SpeedSensor;
 import autonomousplane.infraestructure.interaction.NotificationService;
@@ -58,6 +59,10 @@ public class MyCommandProvider {
 		IFADEC fadec = OSGiUtils.getService(context, IFADEC.class);
 		INavigationSystem gnss = OSGiUtils.getService(context, INavigationSystem.class);
 		IWeatherSensor weatherSensor = OSGiUtils.getService(context, IWeatherSensor.class);
+		ILandingSystem landingSystem = OSGiUtils.getService(context, ILandingSystem.class);
+		IFuelSensor fuelSensor = OSGiUtils.getService(context, IFuelSensor.class);
+		IEGTSensor egtSensor = OSGiUtils.getService(context, IEGTSensor.class);
+		
 		if (flyingService == null ) {
 			System.out.println("Flying Service not available.");
 			return;
@@ -69,6 +74,8 @@ public class MyCommandProvider {
 		System.out.println(String.format("|     Step-Speed : %s", PlaneSimulationElement.getTimeStep() ));
 
 		if ( aoaSensor != null ) {
+			System.out.println("|                  AOA INFO");
+
 			System.out.println(String.format("|     AOA Value: %s °", aoaSensor.getAOA()));
 			System.out.println(" - - - - - - - - - - - - - - - - - - - - - - - -\n");
 
@@ -111,6 +118,24 @@ public class MyCommandProvider {
 
 
 		}
+		if(fuelSensor != null && egtSensor != null) {
+			System.out.println("|                  Engine INFO");
+			System.out.println(" - - - - - - - - - - - - - - - - - - - - - - - -\n");
+			System.out.println(String.format("|     Fuel Level: %s kg", fuelSensor.getFuelLevel()));
+			System.out.println(String.format("|     Fuel Level: %s %%", fuelSensor.getFuelPercentage()));
+			System.out.println(String.format("|     Fuel Consumption Rate: %s kg", fuelSensor.getFuelConsumptionRate()));
+			System.out.println(String.format("|     Fuel Consumption Rate: %s %%", fuelSensor.getFuelConsumptionRate()));
+			System.out.println(String.format("|     Fuel Consumption Rate (Max Consumption Rate): %s %%", fuelSensor.getFuelConsumptionRate()));
+			System.out.println(String.format("|     Estimated Endurance: %s s", fuelSensor.getEstimatedEnduranceSeconds()));
+			if(speedSensor != null) {
+				System.out.println(String.format("|     Estimated Range: %s m", fuelSensor.getEstimatedRangeMeters(speedSensor.getSpeedTAS())));
+			}
+			System.out.println(String.format("|     Engine Temperature: %s °C", egtSensor.getTemperature()));
+			System.out.println(String.format("|     Cooling Enable: %s", egtSensor.isCoolingEnabled()));
+			System.out.println(String.format("|     Heating Enable: %s", egtSensor.isHeatingEnabled()));
+			System.out.println(" - - - - - - - - - - - - - - - - - - - - - - - -\n");
+
+		}
 		if ( controlSurfaces != null ) {
 			System.out.println("|                  CONTROL SURFACES INFO");
 			System.out.println(" - - - - - - - - - - - - - - - - - - - - - - - -\n");
@@ -138,8 +163,10 @@ public class MyCommandProvider {
 			System.out.println(String.format("|     Temperature: %s °C", weatherSensor.getTemperature()));
 			System.out.println(String.format("|     Ground Temperature: %s °C", weatherSensor.getGroundTemperature()));
 			System.out.println(String.format("|     Air Density: %s kg/m³", weatherSensor.getAirDensity()));
+			System.out.println(String.format("|     Humidity: %s %%", weatherSensor.getHumidity()));
+			System.out.println(String.format("|     Pressure: %s hPa", weatherSensor.getHPA()));
+			System.out.println(String.format("|     In Cloud: %s", weatherSensor.isInCloud()));
 			System.out.println(" - - - - - - - - - - - - - - - - - - - - - - - -\n");
-
 		}
 	}
 	
@@ -388,7 +415,7 @@ public class MyCommandProvider {
 					return;
 				}
 				
-				if(gnss.getCurrentFlyghtStage() == EFlyingStages.TAKEOFF) {
+				if(gnss.getCurrentDistance() == 0) {
 					altitudeSensor.setAltitude(groundaltitudeValue);
 				}
 				radioAltimeter.setGroundDistance(RadioAltimeterSensor.calculateGroundDistance(altitudeSensor.getAltitude(), groundaltitudeValue ));
@@ -468,6 +495,7 @@ public class MyCommandProvider {
 	}
 	public void destination(String destination) {
 		INavigationSystem gnss = OSGiUtils.getService(context, INavigationSystem.class);
+		ILandingSystem landingSystem = OSGiUtils.getService(context, ILandingSystem.class);
 		if(gnss == null) {
 			System.out.println("GNSS not available.");
 			return;
@@ -478,7 +506,10 @@ public class MyCommandProvider {
 		}
 		if(destination.toLowerCase().equals("castellon")) {
 			gnss.setTotalDistance(65000);
-			gnss.setCurrentDistance(5000);
+			gnss.setCurrentDistance(0);
+			if(landingSystem != null) {
+				landingSystem.setRunwayHeadingDegrees(90);
+			}
 		} else {
 			System.out.println("Unknown destination: " + destination);
 			return;
@@ -552,6 +583,89 @@ public class MyCommandProvider {
 		
 	
 		
+	}
+	public void fuelLevel(String property, String value) {
+		IFuelSensor fuelSensor = OSGiUtils.getService(context, IFuelSensor.class);
+		INavigationSystem gnss = OSGiUtils.getService(context, INavigationSystem.class);
+		
+		if (fuelSensor == null && gnss == null) {
+			System.out.println("Fuel Sensor or Navigation System not available.");
+			return;
+		}
+		if(gnss.getCurrentFlyghtStage() != EFlyingStages.TAKEOFF) {
+			System.out.println("Fuel level can only be set during TAKEOFF stage.");
+			return;
+		}
+		if (property.equalsIgnoreCase("kg")) {
+			try {
+				double fuelLevel = Double.parseDouble(value); // Assuming value is a string that can be parsed to double
+				if(fuelLevel < 0 || fuelLevel > FuelSensor.MAX_FUEL_KG) {
+					System.out.println("Fuel level must be between 0 + " + FuelSensor.MAX_FUEL_KG + " kg.");
+					return;
+				}
+				fuelSensor.setFuelLevel(fuelLevel);
+				System.out.println("Fuel level set to: " + fuelLevel + " kg");
+			} catch (NumberFormatException e) {
+				System.out.println("Invalid fuel level value: " + value);
+			}
+		} else if (property.equalsIgnoreCase("percentage")) {
+			try {
+				double fuelPercentage = Double.parseDouble(value); // Assuming value is a string that can be parsed to double
+				if(fuelPercentage < 0 || fuelPercentage > 100) {
+					System.out.println("Fuel percentage must be between 0 and 100.");
+					return;
+				}
+				fuelSensor.setFuelPercentage(fuelPercentage);
+				System.out.println("Fuel percentage set to: " + fuelPercentage + "%");
+			} catch (NumberFormatException e) {
+				System.out.println("Invalid fuel percentage value: " + value);
+			}
+		} else {
+			System.out.println("Unknown property: " + property);
+		}
+	}
+	
+	public void setCloud(boolean Value) {
+		IWeatherSensor weatherSensor = OSGiUtils.getService(context, IWeatherSensor.class);
+		if (weatherSensor == null) {
+			System.out.println("Weather Sensor not available.");
+			return;
+		}
+		weatherSensor.setInCloud(Value);
+		System.out.println("In Cloud set to: " + Value);
+	}
+	public void setCooling(boolean Value) {
+		IEGTSensor egtSensor = OSGiUtils.getService(context, IEGTSensor.class);
+		if (egtSensor == null) {
+			System.out.println("EGT Sensor not available.");
+			return;
+		}
+		egtSensor.setCoolingEnabled(Value);
+		System.out.println("Cooling Enabled set to: " + Value);
+	}
+	public void setHeating(boolean Value) {
+		IEGTSensor egtSensor = OSGiUtils.getService(context, IEGTSensor.class);
+		if (egtSensor == null) {
+			System.out.println("EGT Sensor not available.");
+			return;
+		}
+		egtSensor.setHeatingEnabled(Value);
+		System.out.println("Heating Enabled set to: " + Value);
+	}
+	public void objectDetected(boolean Value) {
+		IProximitySensor proximitySensor = OSGiUtils.getService(context, IProximitySensor.class);
+		IRadioAltimeterSensor altitudeSensor = OSGiUtils.getService(context, IRadioAltimeterSensor.class);
+		if (proximitySensor == null || altitudeSensor == null) {
+			System.out.println("Proximity sensor or altitudeSensor not available.");
+			return;
+		}
+		double currentAltitude = altitudeSensor.getGroundDistance();
+		if (Value && currentAltitude > 150.0) {  // Altitude in meters (~500 feet)
+		    System.out.println("Object detection ignored: altitude too high (" + currentAltitude + " m).");
+		    return;
+		}
+		proximitySensor.setObjectDetected(Value);
+		System.out.println("The value of the proximity objects has changed:" + Value);
 	}
 	public void flying(String function) {
 	    if (function.equalsIgnoreCase("L0")) {

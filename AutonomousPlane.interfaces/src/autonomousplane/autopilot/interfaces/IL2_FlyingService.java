@@ -14,7 +14,7 @@ public interface IL2_FlyingService extends IL1_FlyingService{
 	public void setAltimeterSensor(IAltitudeSensor sensor);
 	public void setRadioAltimeterSensor(IRadioAltimeterSensor sensor);
 	public void setSpeedSensor(ISpeedSensor sensor);
-	public void setGNSS(INavigationSystem sensor);
+	public void setNavigationSystem(INavigationSystem sensor);
 	public void setFallbackPlan(IFallbackPlan fallbackPlan);
 	public void setNotificationService(INotificationService service);
 	public void setAOASensor(IAOASensor sensor);

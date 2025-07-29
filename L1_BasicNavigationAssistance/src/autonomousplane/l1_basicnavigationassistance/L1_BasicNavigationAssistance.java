@@ -5,6 +5,7 @@ import org.osgi.framework.BundleContext;
 import autonomousplane.autopilot.interfaces.IFlyingService;
 import autonomousplane.autopilot.interfaces.IL1_BasicNavigationAssistance;
 import autonomousplane.infraestructure.autopilot.L1_FlyingService;
+import autonomousplane.simulation.simulator.PlaneSimulationElement;
 import es.upv.pros.tatami.osgi.utils.logger.SmartLogger;
 
 public class L1_BasicNavigationAssistance extends L1_FlyingService implements IL1_BasicNavigationAssistance {
@@ -31,45 +32,70 @@ public class L1_BasicNavigationAssistance extends L1_FlyingService implements IL
 		this.getAHRSSensor().setYaw(yaw + AHRSSensor.getYawRate());
 		 */
         // New, wider safe ranges
-        double SAFE_PITCH_MIN = -5.0;
-        double SAFE_PITCH_MAX = 10.0;
-        double SAFE_ROLL_MIN = -8.0;
-        double SAFE_ROLL_MAX = 8.0;
-        
-        boolean unstablePitch = pitch < SAFE_PITCH_MIN || pitch > SAFE_PITCH_MAX;
-        boolean unstableRoll = roll < SAFE_ROLL_MIN || roll > SAFE_ROLL_MAX;
-        double correctionTime = 3.0; // segundos
-        Boolean stabilityMode = (Boolean) this.getProperty("stability-mode-active");
-        boolean stabilityModeActive = stabilityMode != null ? stabilityMode.booleanValue() : false;
-        System.out.println(unstableRoll);
-	    if(stabilityModeActive) { // --- Roll correction --- //Cambiarlo
-		     if (unstableRoll) {
-		    	 correction_required = true;
-		         double desiredRoll = clamp(roll, SAFE_ROLL_MIN, SAFE_ROLL_MAX);
-		         double rollError = desiredRoll - roll;
-		
-		         double desiredRollRate = rollError / correctionTime;
-		         double requiredDeflection = desiredRollRate / 2.0; // factor rollRate/deflection
-		         logger.info(String.format("Roll correction: current=%.2f°, error=%.2f°, deflection=%.2f°", roll, rollError, requiredDeflection));
-		         logger.info("Correcting roll angle...");
-		         this.getControlSurfaces().setAileronDeflection(requiredDeflection);
-		     }
-		     // --- Pitch correction ---
-		     if (unstablePitch) {
-		    	 correction_required = true;
+		if(this.getStabilityModeActive() ) {
+	        double SAFE_PITCH_MIN = 2;
+	        double SAFE_PITCH_MAX = 5;
+	        double SAFE_ROLL_MIN = -3;
+	        double SAFE_ROLL_MAX = 3;
+	        double MIN_ROLL_ERROR_THRESHOLD = 0.1; // degrees
+	        double correctionTime = PlaneSimulationElement.getTimeStep() * 2;
 
-		         double desiredPitch = clamp(pitch, SAFE_PITCH_MIN, SAFE_PITCH_MAX);
-		         double pitchError = desiredPitch - pitch;
-		
-		         double desiredPitchRate = pitchError / correctionTime;
-		         double requiredDeflection = -desiredPitchRate / 1.5; // factor pitchRate/deflection
-		         logger.info(String.format("Pitch correction: current=%.2f°, error=%.2f°, deflection=%.2f°",
-		        		    pitch, pitchError, requiredDeflection));
-		         logger.info("Correcting pitch angle...");
-		         this.getControlSurfaces().setElevatorDeflection(requiredDeflection);
-		     }
-	    }
-	    
+	        if (roll >= SAFE_ROLL_MIN && roll <= SAFE_ROLL_MAX) {
+	            this.getControlSurfaces().setAileronDeflection(0.0);
+	            logger.info("Roll within safe range, aileron neutral.");
+	        } else {	            double desiredRoll;
+	            if (roll > SAFE_ROLL_MAX) {
+	                // Too much positive roll, correct negatively
+	                desiredRoll = clamp(roll - 1.5, SAFE_ROLL_MAX, SAFE_ROLL_MIN);
+	            } else {
+	                // Too much negative roll, correct positively
+	                desiredRoll = clamp(roll + 1.5, SAFE_ROLL_MAX, SAFE_ROLL_MIN);
+	            }
+	            double rollError = desiredRoll - roll;
+	            double desiredRollRate = rollError / correctionTime;
+	            double requiredDeflection = desiredRollRate / (1.0);
+	            requiredDeflection = clamp(requiredDeflection, 15.0, -15.0);
+
+	            if (Math.abs(rollError) < MIN_ROLL_ERROR_THRESHOLD) {
+	                this.getControlSurfaces().setAileronDeflection(0.0);
+	            } else {
+	                this.getControlSurfaces().setAileronDeflection(requiredDeflection);
+	                logger.info(String.format(
+	                    "Roll correction: roll=%.2f°, desired=%.2f°, deflection=%.2f°",
+	                    roll, desiredRoll, requiredDeflection
+	                ));
+	            }
+	        }
+
+            boolean unstablePitch = pitch < SAFE_PITCH_MIN || pitch > SAFE_PITCH_MAX;
+            
+            if (unstablePitch) {
+                correction_required = true;
+                double desiredPitch;
+                if (pitch > SAFE_PITCH_MAX) {
+                    // Too much positive pitch, correct negatively
+                    desiredPitch = clamp(pitch - 1.5, SAFE_PITCH_MAX, SAFE_PITCH_MIN);
+                } else {
+                    // Too much negative pitch, correct positively
+                    desiredPitch = clamp(pitch + 1.5, SAFE_PITCH_MAX, SAFE_PITCH_MIN);
+                }
+                double pitchError = desiredPitch - pitch;
+                double desiredPitchRate = pitchError / correctionTime;
+                double requiredDeflection = desiredPitchRate / (0.6 );
+
+                if (Math.abs(pitchError) < MIN_ROLL_ERROR_THRESHOLD) {
+                    this.getControlSurfaces().setElevatorDeflection(0.0);
+                } else {
+                    logger.info(String.format("CLIMB: pitch correction -> current=%.2f°, error=%.2f°, deflection=%.2f°",
+                        pitch, pitchError, requiredDeflection));
+                    logger.info("Correcting Pitch angle...");
+                    this.getControlSurfaces().setElevatorDeflection(requiredDeflection);
+                }
+            } else {
+                this.getControlSurfaces().setElevatorDeflection(0.0);
+            }
+	        
+		}
 	
         
 		if ( !correction_required ) {

@@ -11,8 +11,11 @@ import autonomousplane.devices.interfaces.IControlSurfaces;
 import autonomousplane.devices.interfaces.IFADEC;
 import autonomousplane.devices.interfaces.ISpeedSensor;
 import autonomousplane.devices.interfaces.IWeatherSensor;
+import autonomousplane.infraestructure.OSGiUtils;
 import autonomousplane.infraestructure.autopilot.FallbackPlan;
+import autonomousplane.infraestructure.autopilot.L2_FlyingService;
 import autonomousplane.infraestructure.devices.FADEC;
+import autonomousplane.simulation.simulator.PlaneSimulationElement;
 import es.upv.pros.tatami.osgi.utils.logger.SmartLogger;
 
 public class StallRecoveryFallbackPlan extends FallbackPlan implements IStallRecoveryFallbackPlan {
@@ -58,51 +61,69 @@ public class StallRecoveryFallbackPlan extends FallbackPlan implements IStallRec
 	public void setWeatherSensor(IWeatherSensor weatherSensor) {
 		this.weatherSensor = weatherSensor;
 	}
+	
+	
 	@Override
 	public IFlyingService performTheFlyingFunction() {
 	    if (!checkRequirementsToPerformTheFlyingService()) return null;
 
-	    double timeStepSeconds = 0.05; // Ajusta según tu loop principal
+	    double timeStepSeconds = PlaneSimulationElement.getTimeStep(); // Paso de simulación (p. ej., 0.1s)
 
 	    // 1. Obtener valores actuales
 	    double roll = attitudeSensor.getRoll();
 	    double yaw = attitudeSensor.getYaw();
 	    double pitch = attitudeSensor.getPitch();
-	    double pitchRate = attitudeSensor.getPitchRate();
 
-	    double tas = speedSensor.getSpeedTAS();
-	    double verticalSpeed = altitudeSensor.getVerticalSpeed();
+	    double tas = speedSensor.getSpeedTAS();           // Velocidad aire (vx)
+	    double verticalSpeed = altitudeSensor.getVerticalSpeed(); // Velocidad vertical (vz)
 
 	    // 2. Calcular AOA
-	    double aoa = this.aoaSensor.calculateAOA(pitch, verticalSpeed,  tas);
-	    boolean inStall = aoa >= 15.0;
+	    double currentAOA = this.aoaSensor.calculateAOA(tas, verticalSpeed, pitch);
+	    boolean inStall = currentAOA >= 15.0;
 
 	    // 3. Si estamos en pérdida...
-	 // Java
 	    if (inStall && pitch >= 0) {
-	        double targetAOA = 10.0; // Safe AOA below stall
-	        double currentAOA = this.aoaSensor.calculateAOA(pitch, verticalSpeed, tas);
-	        double deltaAOA = targetAOA - currentAOA;
+	        double targetAOA = 10.0; // Objetivo seguro por debajo del stall
+	        double deltaPitchRequired = targetAOA - currentAOA; // Aproximamos que deltaPitch ≈ deltaAOA
 
-	        double recoveryTime = 1.0; // seconds to recover
-	        double requiredPitchRate = deltaAOA / recoveryTime;
+	        double recoveryTime = timeStepSeconds *2 ; // Tiempo razonable para recuperación (segundos)
+	        double requiredPitchRate = deltaPitchRequired / recoveryTime;
+
+	        // Límite opcional para evitar pitchRate brusco
+	        requiredPitchRate = Math.max(-5.0, Math.min(requiredPitchRate, 5.0));
 
 	        double densityFactor = attitudeSensor.calculateDensityFactor(weatherSensor);
 	        double elevatorDeflection = requiredPitchRate / (0.6 * densityFactor);
 
-	        // Clamp elevator deflection to physical limits, e.g., [-15, 15] degrees
+	        // Limitar deflexión física realista del elevador
 	        elevatorDeflection = Math.max(-15.0, Math.min(elevatorDeflection, 15.0));
 
+	        // Logs de depuración
+	        System.out.println("STALLED!");
+	        System.out.println("AOA = " + currentAOA + "°, target = " + targetAOA + "°, ΔPitch ≈ " + deltaPitchRequired + "°");
+	        System.out.println("RecoveryTime = " + recoveryTime + "s, requiredPitchRate = " + requiredPitchRate + "°/s");
+	        System.out.println("Elevator deflection = " + elevatorDeflection + "°");
+
+	        // Aplicar recuperación
 	        controlSurface.setElevatorDeflection(elevatorDeflection);
-
-	        fadec.setTHRUSTPercentage(100.0);
+	        fadec.setTHRUSTPercentage(100.0); // Máximo empuje durante la recuperación
 	    } else {
-	    	controlSurface.setElevatorDeflection(0.0);
-	    }
+	        controlSurface.setElevatorDeflection(0.0); // Sin pérdida → elevador neutral
+	        IFlyingService flyingService =  OSGiUtils.getService(context, IFlyingService.class);
 
+	        if(flyingService != null) {
+	            flyingService.startFlight();
+		        this.stopTheFlyingFunction(); // Detener el servicio de recuperación
+// Continuar con el servicio de vuelo normal
+	        } else {
+	            logger.error("StallRecoveryFallbackPlan: No IFlyingService available to continue normal flight.");
+	        }
+	        
+	    }
 
 	    return this;
 	}
+
 	
 	
 	@Override

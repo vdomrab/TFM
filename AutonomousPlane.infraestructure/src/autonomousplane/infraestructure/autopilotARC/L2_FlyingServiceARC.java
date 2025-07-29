@@ -50,7 +50,7 @@ public class L2_FlyingServiceARC extends L1_FlyingServiceARC {
 			this.getTheL2FlyingService().setSpeedSensor((ISpeedSensor) value);	
 		}
 		else if (req.equals(REQUIRED_NAVIGATIONSYSTEM)) {
-			this.getTheL2FlyingService().setGNSS((INavigationSystem) value);
+			this.getTheL2FlyingService().setNavigationSystem((INavigationSystem) value);
 		}else if (req.equals(REQUIERED_FALLBACKPLAN)) {
 			this.getTheL2FlyingService().setFallbackPlan((IFallbackPlan) value);
 		}else if (req.equals(REQUIRED_AOASENSOR))
@@ -79,7 +79,7 @@ public class L2_FlyingServiceARC extends L1_FlyingServiceARC {
 			this.getTheL2FlyingService().setSpeedSensor(null);	
 		}
 		else if (req.equals(REQUIRED_NAVIGATIONSYSTEM)) {
-			this.getTheL2FlyingService().setGNSS(null);
+			this.getTheL2FlyingService().setNavigationSystem(null);
 		} else if (req.equals(REQUIERED_FALLBACKPLAN)) {
 			this.getTheL2FlyingService().setFallbackPlan(null);
 		}else if (req.equals(REQUIRED_AOASENSOR)) {
