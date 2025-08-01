@@ -17,7 +17,7 @@ public class NavigationSystem extends Thing implements INavigationSystem{
 	public NavigationSystem(BundleContext context,String id) {
 		super(context, id);
 		this.addImplementedInterface(INavigationSystem.class.getName());
-		this.setTotalDistance(0.0);
+		this.setTotalDistance(500000);
 		this.setCurrentDistance(0.0);
 		this.setCurrentFlyghtStage(EFlyingStages.TAKEOFF);
 	}
@@ -49,7 +49,7 @@ public class NavigationSystem extends Thing implements INavigationSystem{
 
 	@Override
 	public INavigationSystem calcualteCurrentDistance(double speed) {
-		double msSPeed = speed / 3.6; // Convert km/h to m/s
+		double msSPeed = speed; // Convert km/h to m/s
 		double currentDistance = this.getCurrentDistance() + msSPeed;
 		this.setCurrentDistance(currentDistance);
 		return this;
@@ -67,41 +67,57 @@ public class NavigationSystem extends Thing implements INavigationSystem{
 	}
 	
 	public EFlyingStages calculateTheFlyingStage(double altitude) {
-	    final double TAKEOFF_DISTANCE_THRESHOLD = 1000;   // metros
-	    final double CLIMB_START_DISTANCE = 1500;
-	    final double CLIMB_END_DISTANCE = 5000;
-	    final double LANDING_ALTITUDE_THRESHOLD = 150;
+		double verticalSpeed = -5.0; // Placeholder for actual vertical speed, should be set based on real data
+	    final double TAKEOFF_DISTANCE_THRESHOLD = 2500.0;   // meters
+	    final double CLIMB_START_DISTANCE = 2500.0;
+	    final double LANDING_ALTITUDE_THRESHOLD = 600.0;    // meters (updated as per your suggestion)
 
 	    double currentDistance = this.getCurrentDistance();
 	    double totalDistance = this.getTotalDistance();
-	    double cruiseDistanceEnd = totalDistance * 0.8;   // último 20% no crucero (descenso+aterrizaje)
-	    
-	    // Fase Takeoff: primeros 1000m
-	    if (currentDistance < TAKEOFF_DISTANCE_THRESHOLD) {
-	        return EFlyingStages.TAKEOFF;
-	    }
+	    double horizontalDistanceRemaining = totalDistance - currentDistance;
 
-	    // Fase Climb: entre 1000m y 5000m y altitud por debajo del crucero
-	    if (currentDistance >= CLIMB_START_DISTANCE && currentDistance < CLIMB_END_DISTANCE ) {
-	        return EFlyingStages.CLIMB;
-	    }
+	    EFlyingStages currentStage = this.getCurrentFlyghtStage();
 
-	    // Fase Cruise: entre 20% y 80% de la distancia total y altitud en crucero o cerca
-	    if (currentDistance >= CLIMB_END_DISTANCE && currentDistance <= cruiseDistanceEnd  ) {
-	        return EFlyingStages.CRUISE;
-	    }
-
-	    // Fase Descent: después del 80% de la distancia y altitud bajando del crucero
-	    if (currentDistance > cruiseDistanceEnd && altitude > LANDING_ALTITUDE_THRESHOLD) {
+	    // Use vertical speed to estimate descent distance
+	    double timeToDescend = (altitude + LANDING_ALTITUDE_THRESHOLD + 200) / Math.abs(verticalSpeed); // seconds
+	    double averageGroundSpeed = 94; 
+	    double requiredDescentDistance = averageGroundSpeed * timeToDescend;
+	    System.out.println("Required descent distance: " + requiredDescentDistance + " meters");
+	    System.out.println("Current distance: " + currentDistance + " meters");
+	    System.out.println("Remaining distance: " + horizontalDistanceRemaining + " meters");
+	    System.out.println("currentDistance >= CLIMB_START_DISTANCE: " + (currentDistance >= CLIMB_START_DISTANCE));
+	    System.out.println("altitude <= 9000: " + (altitude <= 9000));
+	    System.out.println("getCurrentFlyghtStage() == EFlyingStages.TAKEOFF: " + (this.getCurrentFlyghtStage() == EFlyingStages.TAKEOFF));
+	    System.out.println("horizontalDistanceRemaining > requiredDescentDistance: " + (horizontalDistanceRemaining > requiredDescentDistance));
+	    // --- Stable phase logic ---
+	    if (currentStage == EFlyingStages.DESCENT || currentStage == EFlyingStages.LANDING) {
+	        if (altitude <= LANDING_ALTITUDE_THRESHOLD && currentDistance > 0 && horizontalDistanceRemaining <= 5000) {
+	            return EFlyingStages.LANDING;
+	        }
 	        return EFlyingStages.DESCENT;
 	    }
 
-	    // Fase Landing: altitud 0 o cerca y distancia positiva (en tierra o muy cerca)
-	    if (altitude <= LANDING_ALTITUDE_THRESHOLD && currentDistance > 0) {
-	        return EFlyingStages.LANDING;
+	    if (currentDistance < TAKEOFF_DISTANCE_THRESHOLD) {
+	        return EFlyingStages.TAKEOFF;
 	    }
-	    System.out.println("No se ha podido determinar la fase de vuelo, se retorna TAKEOFF por defecto.");
-	    // Si no encaja en ninguna, por seguridad retornamos TAKEOFF (o podrías lanzar excepción)
-	    return EFlyingStages.TAKEOFF;
+	    
+	    if (currentDistance >= CLIMB_START_DISTANCE && altitude <= 9000 && this.getCurrentFlyghtStage() == EFlyingStages.TAKEOFF && horizontalDistanceRemaining > requiredDescentDistance) {
+	        return EFlyingStages.CLIMB;
+	    }
+
+	    if (horizontalDistanceRemaining > requiredDescentDistance && altitude > 9000) {
+	        return EFlyingStages.CRUISE;
+	    }
+
+	    // Start descent when needed
+	    if (horizontalDistanceRemaining <= requiredDescentDistance && altitude > LANDING_ALTITUDE_THRESHOLD) {
+	        return EFlyingStages.DESCENT;
+	    }
+
+	    // Fallback
+	    return currentStage;
 	}
+
+
+
 }

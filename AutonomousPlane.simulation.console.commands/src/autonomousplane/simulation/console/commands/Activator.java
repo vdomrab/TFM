@@ -79,7 +79,7 @@ public class Activator implements BundleActivator {
 				    //
 				    //  Ejemplo:
 				    //      destination Castellon
-					"destination",
+					"flyingStage",
 					// climate : establece las condiciones climáticas generales en el entorno de simulación
 					//
 					//  Modo uso

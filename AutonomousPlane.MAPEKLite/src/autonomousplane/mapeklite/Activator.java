@@ -176,6 +176,7 @@ public class Activator implements BundleActivator {
 	    SystemConfigurationHelper.componentToAdd(theInitialSystemConfiguration, "device.SpeedSensor", "1.0.0");
 	    SystemConfigurationHelper.componentToAdd(theInitialSystemConfiguration, "device.FADEC", "1.0.0");
 	    SystemConfigurationHelper.componentToAdd(theInitialSystemConfiguration, "device.WeatherSensor", "1.0.0");
+
 	    SystemConfigurationHelper.bindingToAdd(
 		        theInitialSystemConfiguration,
 		        "L2_PartialAutomation", "1.0.0",

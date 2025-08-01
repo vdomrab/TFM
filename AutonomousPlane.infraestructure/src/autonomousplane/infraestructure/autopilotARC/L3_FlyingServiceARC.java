@@ -28,8 +28,7 @@ public class L3_FlyingServiceARC extends L2_FlyingServiceARC {
 		} else if (req.equals(REQUIRED_PROXIMITYSENSOR)) {
 			this.getTheL3FlyingService().setProximitySensor((autonomousplane.devices.interfaces.IProximitySensor) value);
 		} else if (req.equals(REQUIRED_LANDINGSYSTEM)) {
-			this.getTheL3FlyingService().setLandingSystem((autonomousplane.devices.interfaces.ILandingSystem) value);
-		
+			this.getTheL3FlyingService().setLandingSystem((autonomousplane.devices.interfaces.ILandingSystem) value);	
 		} else {
 			return super.bindService(req, value);
 		}

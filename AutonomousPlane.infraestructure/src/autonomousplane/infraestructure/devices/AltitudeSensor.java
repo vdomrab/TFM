@@ -18,11 +18,11 @@ public class AltitudeSensor extends Thing implements IAltitudeSensor {
 	public static final double MAX_VERTICAL_ACCELERATION = 3.0;  // ≈ +2.5 g
 	public static final double MIN_VERTICAL_ACCELERATION = -3.0; // ≈ -1.5 g
     private static final double PLANE_MASS = 70000 ; // Masa del avión en kg, un valor típico para un avión pequeño
-	public static final double MAX_THRUST_FORCE = 243000; // Maximum thrust force in Newtons
+	public static final double MAX_THRUST_FORCE = 243000; // Maximum thru st force in Newtons
 	private final double GRAVITY = 9.81; // m/s2
 	public static final double WING_AREA = 124.6; // m"2
-	public static final double MAX_VERTICAL_SPEED = 7.6; // Maximum vertical speed in m/s
-	public static final double MIN_VERTICAL_SPEED = -7.6; // Minimum vertical speed in m/s
+	public static final double MAX_VERTICAL_SPEED = 12; // Maximum vertical speed in m/s
+	public static final double MIN_VERTICAL_SPEED = -5; // Minimum vertical speed in m/s
 
 	//protected AltitudeRateListener listener = null;
 	
@@ -83,37 +83,7 @@ public class AltitudeSensor extends Thing implements IAltitudeSensor {
 		
 		return altitudeRate;
 	}
-	// Java
-	/*public double calculateVerticalAcceleration(
-	    double thrust,            // porcentaje de thrust (0–100)
-	    double pitchDegrees,      // ángulo de cabeceo
-	    double airDensity,        // ρ en kg/m³ (ISA)
-	    double speed,
-	    double aoa
-	) {
-	    double horizontalSpeed = speed; // Only horizontal speed generates lift
-	    double pitchRad = Math.toRadians(pitchDegrees);
-	    double thrustN = (thrust / 100.0) * MAX_THRUST_FORCE;
-
-	    double FThrustVertical = thrustN * Math.sin(pitchRad);
-
-	    // More physical lift calculation
-	    double lift = 0.5 * airDensity * Math.pow(horizontalSpeed, 2) * calculateLiftCoefficient(Math.toRadians(aoa)) * WING_AREA;
-	    double FLiftVertical = lift;
-
-	    // Add drag (vertical component)
-	    double dragCoefficient = 0.03; // Typical for jet airliners
-	    double drag = 0.5 * airDensity * Math.pow(horizontalSpeed, 2) * dragCoefficient * WING_AREA;
-	    double FDragVertical = drag * Math.sin(pitchRad);
-
-	    double weight = PLANE_MASS * 9.81;
-
-	    double netVerticalForce = FThrustVertical + FLiftVertical - FDragVertical - weight;
-	    double verticalAcceleration = netVerticalForce / PLANE_MASS;
-	    verticalAcceleration = verticalAcceleration * 0.35;
-	    // Clamp to realistic values
-	    return Math.max(MIN_VERTICAL_ACCELERATION, Math.min(verticalAcceleration, MAX_VERTICAL_ACCELERATION));
-	}*/
+	
 	public double calculateVerticalAcceleration(
 		    double thrust,            // porcentaje de thrust (0–100)
 		    double pitchDegrees,      // ángulo de cabeceo
@@ -156,11 +126,11 @@ public class AltitudeSensor extends Thing implements IAltitudeSensor {
 		}
 	
 	protected double calculateLiftCoefficient(double aoaRad) {
-	    final double aoaCriticalRad = Math.toRadians(15.0); // Stall típico
+	    final double aoaCriticalRad = Math.toRadians(13.0); // Stall típico
 	    final double stallDropRange = Math.toRadians(3.0);  // Caída agresiva en 3°
-	    final double CL_0 = 0.2;
+	    final double CL_0 = 0.4;
 	    final double CL_alpha = 5.7;
-	    final double CL_max = 1.2;
+	    final double CL_max = 1.5;
 
 	    double aoaAbs = Math.abs(aoaRad);
 	    double sign = Math.signum(aoaRad);
@@ -182,48 +152,6 @@ public class AltitudeSensor extends Thing implements IAltitudeSensor {
 
 
 
-	
-	/*
-	 * public double calculateVerticalAcceleration(
-    double thrust, // Empuje en Newtons
-    double speed,  // Velocidad en km/h
-    double pitchAngle, // en grados
-    double airDensity, // densidad en kg/m^3
-    double dragCoefficient,
-    double frontalArea,
-    double mass
-) {
-    double g = 9.81; // gravedad m/s^2
-    double speedMS = speed / 3.6; // convertir km/h a m/s
-    double pitchRad = Math.toRadians(pitchAngle);
-
-    // Calcular drag
-    double drag = 0.5 * airDensity * speedMS * speedMS * dragCoefficient * frontalArea;
-
-    // Fuerza vertical neta (proyectando empuje y drag en vertical)
-    double verticalForce = thrust * Math.sin(pitchRad) - drag * Math.sin(pitchRad) - mass * g;
-
-    // Aceleración vertical = fuerza neta / masa
-    double verticalAcceleration = verticalForce / mass;
-
-    return verticalAcceleration; // en m/s^2
-}
-
-	 */
-	
-	/*/ @Override
-		public IThing registerThing() {
-			super.registerThing();
-			this.listener.start();
-			return this;
-		}
-		
-	@Override
-	public IThing unregisterThing() {
-			this.listener.stop();	this.listener = null;
-			super.unregisterThing();
-			return this;
-	}*/
 	
 	public class AltitudeRateListener extends AbstractAltitudeRateListener {
         private AltitudeSensor altitudeSensor;

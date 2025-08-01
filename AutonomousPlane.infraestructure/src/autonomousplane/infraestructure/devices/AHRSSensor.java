@@ -103,6 +103,7 @@ public class AHRSSensor extends Thing implements IAttitudeSensor{
 	public IAttitudeSensor setPitch(double pitch) {
 		double clampedPitch = Math.max(MIN_PITCH, Math.min(pitch, MAX_PITCH));
 		this.setProperty(PITCH_ANGLE, clampedPitch);
+		System.out.println("ControlSurfaceListener: pitch=" + clampedPitch);
 		return this;
 	}
 	@Override

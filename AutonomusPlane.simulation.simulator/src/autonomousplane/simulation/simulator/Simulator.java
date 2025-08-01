@@ -82,7 +82,6 @@ public class Simulator extends Thing implements ISimulator {
 	   
 	   if ( this.verbose )
 		   System.out.println("\n>>> >>> >>> >>> >>> >>> >>> >>>\n>>> STEP " + step + "\n>>> >>> >>> >>> >>> >>> >>> >>>");
-	   this.simulationPlane.onSimulationStep(step, time_lapse_millis);
 
 	   Collection<ISimulationElement> simulationElements = OSGiUtils.getServices(this.getBundleContext(), ISimulationElement.class, null);
 	   System.out.println("Simulation elements: " + simulationElements);
@@ -90,6 +89,8 @@ public class Simulator extends Thing implements ISimulator {
 		   for (ISimulationElement e : simulationElements) {
 			   e.onSimulationStep(step, time_lapse_millis);
 		   }
+	   this.simulationPlane.onSimulationStep(step, time_lapse_millis);
+
 	   
    }
    

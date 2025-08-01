@@ -11,6 +11,7 @@ import autonomousplane.devices.interfaces.IAttitudeSensor;
 import autonomousplane.devices.interfaces.IControlSurfaces;
 import autonomousplane.devices.interfaces.IFADEC;
 import autonomousplane.devices.interfaces.IFuelSensor;
+import autonomousplane.devices.interfaces.IThing;
 import autonomousplane.devices.interfaces.IWeatherSensor;
 import autonomousplane.infraestructure.Thing;
 
@@ -28,6 +29,7 @@ public class FuelSensor extends Thing implements IFuelSensor {
         this.addImplementedInterface(IFuelSensor.class.getName());
         this.setFuelLevel(MAX_FUEL_KG);
         this.setFuelConsumptionRate(IDLE_BURN_RATE_KG_PER_SEC);
+        this.listener = new FuelSensorListener(context, this);
         // Inicializar con tasa máxima
     }
     
@@ -125,7 +127,19 @@ public class FuelSensor extends Thing implements IFuelSensor {
 		double level = (percentage / 100.0) * MAX_FUEL_KG;
 		return setFuelLevel(level);
 	}
-    
+    @Override
+	public IThing registerThing() {
+		super.registerThing();
+		this.listener.start();
+		return this;
+	}
+	
+	@Override
+	public IThing unregisterThing() {
+			this.listener.stop();	this.listener = null;
+			super.unregisterThing();
+			return this;
+	}
     class FuelSensorListener implements ServiceListener {
 		private BundleContext context = null;
 		private FuelSensor sensor = null;
@@ -136,14 +150,15 @@ public class FuelSensor extends Thing implements IFuelSensor {
 		}
 
 		public void start() {
-			 String filter = "(|(" + Constants.OBJECTCLASS + "=" + IFADEC.class.getName() + ")"
-				        + "(" + Constants.OBJECTCLASS + "=" + IWeatherSensor.class.getName() + ")";
-		     try {
-				this.context.addServiceListener(this, filter);
-			} catch (InvalidSyntaxException e) {
-				e.printStackTrace();
-			}
+		    String filter = "(|(" + Constants.OBJECTCLASS + "=" + IFADEC.class.getName() + ")"
+		                        + "(" + Constants.OBJECTCLASS + "=" + IWeatherSensor.class.getName() + "))";
+		    try {
+		        this.context.addServiceListener(this, filter);
+		    } catch (InvalidSyntaxException e) {
+		        e.printStackTrace();
+		    }
 		}
+
 
 		public void stop() {
 			this.context.removeServiceListener(this);
@@ -152,13 +167,15 @@ public class FuelSensor extends Thing implements IFuelSensor {
 		public void serviceChanged(ServiceEvent event) {
 			IFADEC fadec = getService(IFADEC.class);
 	        IWeatherSensor weatherSensor = getService(IWeatherSensor.class);
-	        if (fadec != null && weatherSensor != null) {
+
+	        if (fadec == null && weatherSensor == null) {
+
 		        return; // No control surfaces or weather sensor available
 		    }
 	        double thrustPercentage = fadec.getCurrentThrust();
 	        double airDensity = weatherSensor.getAirDensity();
 	        double consumptionRate = sensor.updateFuelConsumption(thrustPercentage, airDensity); 
-		    switch (event.getType()) {
+	        switch (event.getType()) {
 		        case ServiceEvent.REGISTERED:
 		        case ServiceEvent.MODIFIED:
 		        	sensor.setFuelConsumptionRate(consumptionRate);

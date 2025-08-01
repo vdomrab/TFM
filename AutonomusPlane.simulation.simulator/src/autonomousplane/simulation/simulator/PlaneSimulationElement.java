@@ -120,6 +120,7 @@ public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
 			double acceleration = speedSensor.getSpeedIncreaseTAS();
 			double deltaSpeedMS = acceleration * timeStepSeconds; // m/s
 		    double currentSpeedTAS = speedSensor.getSpeedTAS() + deltaSpeedMS;
+		  
 		    speedSensor.setSpeedTAS(currentSpeedTAS);
 		    speedSensor.setSpeedGS(
 		        speedSensor.calculateGroundSpeed(
@@ -182,10 +183,11 @@ public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
 		if (speedSensor != null && navigationSystem != null ){
 			if(speedSensor.getSpeedGS() != 0 ) {
 				navigationSystem.calcualteCurrentDistance(speedSensor.getSpeedGS() * timeStepSeconds);
+				System.out.println("PlaneSimulationElement onSimulationStep: " + speedSensor.getSpeedGS() * timeStepSeconds);
 			}
 			if(altimeterSensor != null ) {
 		    navigationSystem.setCurrentFlyghtStage(
-			        navigationSystem.calculateTheFlyingStage(altimeterSensor.getAltitude())
+			        navigationSystem.calculateTheFlyingStage(altimeterSensor.getAltitude() - radioAltimeterSensor.getRealGroundAltitude())
 			    );
 
 			}

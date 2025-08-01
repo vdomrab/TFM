@@ -43,7 +43,7 @@ public class WeatherSensor extends Thing implements IWeatherSensor{
 		this.setWindSpeed(0.0); // Default wind speed in m/s
 		this.setActualClimate(EClimate.CLEAR); // Default climate condition
 		this.setWindDirection(0.0); // Default wind direction in degrees
-		this.setHumidity(65.0); // Default humidity in percentage
+		this.setHumidity(80.0); // Default humidity in percentage
 		this.setHPA(calculatePressureHpa());
 		listener = new altitudeListener(context, this);
 	}
@@ -231,13 +231,11 @@ public class WeatherSensor extends Thing implements IWeatherSensor{
 
 		public void serviceChanged(ServiceEvent event) {
 	        ServiceReference<?> ref = event.getServiceReference();
-            System.out.print("FADEC regidsdfsdggsdsgstered: " );
 
             switch (event.getType()) {
 			case ServiceEvent.REGISTERED:
 			case ServiceEvent.MODIFIED:
 	            IAltitudeSensor altimeterSensor = (IAltitudeSensor) context.getService(ref);
-	            System.out.print("FADEC registered: " );
 	            if (altimeterSensor != null) {
 	               double getAltitude = altimeterSensor.getAltitude();
 	               weatherSensor.setAirDensity(weatherSensor.calculateAirDensity(getAltitude));

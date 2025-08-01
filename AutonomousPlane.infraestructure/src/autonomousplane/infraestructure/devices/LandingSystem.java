@@ -23,8 +23,8 @@ public class LandingSystem  extends Thing implements ILandingSystem {
 
 	public LandingSystem(BundleContext context, String id) {
 		super(context, id);
-		this.addImplementedInterface(LandingSystem.class.getName());
-		this.setRunwayHeadingDegrees(0.0); // Default heading
+		this.addImplementedInterface(ILandingSystem.class.getName());
+		this.setRunwayHeadingDegrees(50.0); // Default heading
 }
 
 	

@@ -11,6 +11,7 @@ public class ProximitySensor extends Thing implements IProximitySensor {
 	public ProximitySensor(BundleContext context, String id) {
 		super(context, id);
 		this.addImplementedInterface(IProximitySensor.class.getName());
+		this.setObjectDetected(false); // Inicialmente no hay objeto cercano
 	}
 	
 	@Override

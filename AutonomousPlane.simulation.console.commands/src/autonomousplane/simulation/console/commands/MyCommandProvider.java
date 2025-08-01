@@ -124,9 +124,7 @@ public class MyCommandProvider {
 			System.out.println(String.format("|     Fuel Level: %s kg", fuelSensor.getFuelLevel()));
 			System.out.println(String.format("|     Fuel Level: %s %%", fuelSensor.getFuelPercentage()));
 			System.out.println(String.format("|     Fuel Consumption Rate: %s kg", fuelSensor.getFuelConsumptionRate()));
-			System.out.println(String.format("|     Fuel Consumption Rate: %s %%", fuelSensor.getFuelConsumptionRate()));
-			System.out.println(String.format("|     Fuel Consumption Rate (Max Consumption Rate): %s %%", fuelSensor.getFuelConsumptionRate()));
-			System.out.println(String.format("|     Estimated Endurance: %s s", fuelSensor.getEstimatedEnduranceSeconds()));
+				System.out.println(String.format("|     Estimated Endurance: %s s", fuelSensor.getEstimatedEnduranceSeconds()));
 			if(speedSensor != null) {
 				System.out.println(String.format("|     Estimated Range: %s m", fuelSensor.getEstimatedRangeMeters(speedSensor.getSpeedTAS())));
 			}
@@ -152,6 +150,9 @@ public class MyCommandProvider {
 			System.out.println(String.format("|     Total Distance: %s m", gnss.getTotalDistance()));
 			System.out.println(String.format("|     Current Distance: %s m", gnss.getCurrentDistance()));
 			System.out.println(String.format("|     Current Flyght Stage: %s", gnss.getCurrentFlyghtStage()));
+			if(landingSystem != null) {
+				System.out.println(String.format("|     Landing System: %s", landingSystem.getRunwayHeadingDegrees()));
+			}
 			System.out.println(" - - - - - - - - - - - - - - - - - - - - - - - -\n");
 
 		}
@@ -493,29 +494,75 @@ public class MyCommandProvider {
 	    thrustSensor.setTHRUSTPercentage(thurst);
 	    controlSurfaces.setElevatorDeflection(elevatorDeflection); // Use control surface
 	}
-	public void destination(String destination) {
+	public void flyingStage(String stage) {
 		INavigationSystem gnss = OSGiUtils.getService(context, INavigationSystem.class);
 		ILandingSystem landingSystem = OSGiUtils.getService(context, ILandingSystem.class);
-		if(gnss == null) {
-			System.out.println("GNSS not available.");
+		IAltitudeSensor altitudeSensor = OSGiUtils.getService(context, IAltitudeSensor.class);
+		ISpeedSensor speedSensor = OSGiUtils.getService(context, ISpeedSensor.class);
+		IFADEC fadec = OSGiUtils.getService(context, IFADEC.class);
+		IRadioAltimeterSensor radioAltimeter = OSGiUtils.getService(context, IRadioAltimeterSensor.class);
+		if(gnss == null || altitudeSensor == null || speedSensor == null || fadec == null) {
+			System.out.println("A sensor is not available.");
 			return;
 		}
 		if(gnss.getCurrentFlyghtStage() != EFlyingStages.TAKEOFF) {
 			System.out.println("Destination can only be set during TAKEOFF stage.");
 			return;
 		}
-		if(destination.toLowerCase().equals("castellon")) {
-			gnss.setTotalDistance(65000);
+		System.out.println("Setting flying stage to: " + stage);
+		System.out.println("Resetting real ground altitude to 0");
+		if(stage.toLowerCase().equals("takeoff")) {
 			gnss.setCurrentDistance(0);
-			if(landingSystem != null) {
-				landingSystem.setRunwayHeadingDegrees(90);
-			}
-		} else {
-			System.out.println("Unknown destination: " + destination);
+			altitudeSensor.setAltitude(0); // Set initial altitudede for Castellon
+			radioAltimeter.setGroundDistance(0); // Set initial ground distance for Castellon
+			radioAltimeter.setRealGroundAltitude(0); // Set initial ground altitude for Castellon
+			speedSensor.setSpeedTAS(0); // Set initial ground speed for Castellon
+			speedSensor.setSpeedGS(0); // Set initial ground speed for Castellon
+			fadec.setTHRUSTPercentage(0); // Set initial thrust for Castellon
+			gnss.setCurrentFlyghtStage(EFlyingStages.TAKEOFF);
+		} else if(stage.toLowerCase().equals("landing")) {
+			gnss.setCurrentDistance(495000);
+			altitudeSensor.setAltitude(300); // Set initial altitudede for Castellon´
+			radioAltimeter.setGroundDistance(300); // Set initial ground altitude for Castellon
+			radioAltimeter.setRealGroundAltitude(0); // Set initial ground altitude for Castellon
+
+			speedSensor.setSpeedTAS(80); // Set initial ground speed for Castellon
+			speedSensor.setSpeedGS(80); // Set initial ground speed for Castellon
+			fadec.setTHRUSTPercentage(20); // Set initial thrust for Castellon
+			gnss.setCurrentFlyghtStage(EFlyingStages.LANDING);
+		} else if(stage.toLowerCase().equals("cruise")) {
+			gnss.setCurrentDistance(206000);
+			altitudeSensor.setAltitude(10000); // Set initial altitude for cruise
+			radioAltimeter.setGroundDistance(2500); // Set initial ground altitude for Castellon
+			radioAltimeter.setRealGroundAltitude(0); // Set initial ground altitude for Castellon
+			speedSensor.setSpeedTAS(230); // Set initial ground speed for cruise
+			speedSensor.setSpeedGS(230); // Set initial ground speed for cruise
+			fadec.setTHRUSTPercentage(70); // Set initial thrust for cruise
+			gnss.setCurrentFlyghtStage(EFlyingStages.CRUISE);
+		} else if(stage.toLowerCase().equals("climb")) {
+			gnss.setCurrentDistance(2500);
+			altitudeSensor.setAltitude(60); // Set initial altitude for approach
+			radioAltimeter.setGroundDistance(60); // Set initial ground altitude for Castellon
+			radioAltimeter.setRealGroundAltitude(0); // Set initial ground altitude for Castellon
+			speedSensor.setSpeedTAS(100); // Set initial ground speed for approach
+			speedSensor.setSpeedGS(100); // Set initial ground speed for approach
+			fadec.setTHRUSTPercentage(90); // Set initial thrust for approach
+			gnss.setCurrentFlyghtStage(EFlyingStages.CLIMB);
+		} else if(stage.toLowerCase().equals("descent")) {
+			gnss.setCurrentDistance(290000);
+			altitudeSensor.setAltitude(10000); // Set initial altitude for approach
+			radioAltimeter.setGroundDistance(2500); // Set initial ground altitude for Castellon
+			radioAltimeter.setRealGroundAltitude(0); // Set initial ground altitude for Castellon
+			speedSensor.setSpeedTAS(170); // Set initial ground speed for approach
+			speedSensor.setSpeedGS(170); // Set initial ground speed for approach
+			fadec.setTHRUSTPercentage(50); // Set initial thrust for approach
+			gnss.setCurrentFlyghtStage(EFlyingStages.DESCENT);
+		}else {
+			System.out.println("Unknown flying stage: " + stage);
 			return;
 		}
-		System.out.println("Destination set to: " + destination);
 	}
+	
 	public void wind(String property, double value) {
 		IWeatherSensor weatherSensor = OSGiUtils.getService(context, IWeatherSensor.class);
 		if (weatherSensor == null) {

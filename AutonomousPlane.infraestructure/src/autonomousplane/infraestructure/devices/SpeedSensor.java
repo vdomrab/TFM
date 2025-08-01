@@ -28,7 +28,7 @@ public class SpeedSensor extends Thing implements ISpeedSensor {
 	public static final double FRONTAL_AREA = 80.0; // Área frontal en m², un valor típico para un avión pequeño
 	public static final double PLANE_MASS = 79000 ; // Masa del avión en kg, un valor típico para un avión pequeño
     public static final double AIR_BRAKE_DRAG_COEFFICIENT = 0.9; // o un valor entre 0.3 y 0.6 según el modelo
-
+    
 	protected FADECListener listener = null;
 	public SpeedSensor(BundleContext context, String id) {
 		super(context, id);
