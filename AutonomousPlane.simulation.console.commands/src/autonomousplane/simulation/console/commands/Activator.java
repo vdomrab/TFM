@@ -60,6 +60,15 @@ public class Activator implements BundleActivator {
 				//	
 				// PARÁMETROS DE CONTEXTO
 				//	
+					// engine-failure : fallo de motor (FADEC)
+					// 
+					//  Modo uso
+					//				      engine-failure [ set ] [ boolean ]
+					//				      engine-failure [ get ]
+					//  Permite activar o desactivar el estado de fallo del motor a través del sistema FADEC.
+					//  Al establecerlo en `true`, se simula un fallo de motor; en `false`, se restablece 
+					//  el funcionamiento normal.
+					"setEngineFailure", // establece el fallo del motor (IEGTSensor)
 				    // terrain-altitude : sensor de altitud del terreno (RadioAltimeterSensor)
 					//
 					//  Modo uso
@@ -95,19 +104,7 @@ public class Activator implements BundleActivator {
 					//  Ejemplo:
 					//					      climate Stormy
 					"climate",
-					// wind : configura manualmente las condiciones del viento
-					//
-					//  Modo de uso:
-					//					      wind speed [ double ]        → Establece la velocidad del viento en km/h.
-					//					      wind direction [ double ]    → Establece la dirección del viento en grados.
-					//
-					//  Permite ajustar directamente la velocidad y dirección del viento en el sistema de sensores meteorológicos (IWeatherSensor).
-					//  Estos valores sobrescriben cualquier configuración previa de clima.
-					//
-					//  Ejemplos:
-					//					      wind speed 35.0
-					//					      wind direction 270.0
-					"wind",
+					
 					// groundTemperature : establece o consulta la temperatura en superficie
 					//
 					//  Modo uso
@@ -181,6 +178,13 @@ public class Activator implements BundleActivator {
 				//	
 				// CONTROL MANUAL DEL VEHÍCULO
 				//	
+					// changeFlyingAssistance : método para activar o desactivar la asistencia de vuelo en distintos niveles de servicio
+					//
+					// Modo uso
+					//					    changeFlyingAssistance [ set ] [boolean]
+					// Ejemplo: changeFlyingAssistance(true)  // activa la asistencia de vuelo (modo estabilidad)
+					//					          changeFlyingAssistance(false) // desactiva la asistencia de vuelo (modo manual) 
+					"changeFlyingAssistance",
 					// ControlSurface : sensores de superficie de control (ControlSurfaceSensor)
 					//
 					//  Modo uso
@@ -194,34 +198,6 @@ public class Activator implements BundleActivator {
 					//		acceleration [ get ] [String]
 					// Ejemplo: acceleration 10
 					"thrust", 
-					// speed : acelera el avion seleccionando una velocidad km/h
-					//
-					//  Modo uso
-					//		speed [ set ] [ double ]
-					//		speed [ get ] 
-					// Ejemplo: speed set 100
-					"speed",
-					// ascend : inicia una maniobra de ascenso ajustando el ángulo de pitch y la velocidad objetivo.
-					//
-					// Modo de uso:
-					//		ascend [ slow | middle | fast ]
-					//
-					// Ejemplos:
-					//	  ascend slow     → Pitch suave (~5°) y velocidad reducida (~400 km/h)
-					//	  ascend middle   → Pitch medio (~10°) y velocidad media (~600 km/h)
-					//	  ascend fast     → Pitch pronunciado (~15°) y velocidad alta (~750 km/h)
-					"ascend",
-					// descend : inicia una maniobra de descenso ajustando el ángulo de pitch negativo y la velocidad objetivo.
-					//
-					// Modo de uso:
-					//		  descend [ slow | middle | fast ]
-					//
-				    // Ejemplos:
-					//	      descend slow     → Pitch negativo suave (~-3°) y velocidad moderada (~500 km/h)
-					//		  descend middle   → Pitch negativo medio (~-7°) y velocidad media (~600 km/h)
-					//		  descend fast     → Pitch negativo pronunciado (~-12°) y velocidad alta (~700 km/h)
-
-					"descend",
 					// setCooling : activa o desactiva el sistema de refrigeración del motor.
 					//
 					//  Modo uso

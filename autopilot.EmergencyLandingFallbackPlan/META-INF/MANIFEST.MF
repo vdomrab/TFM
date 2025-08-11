@@ -31,3 +31,4 @@ Import-Package: autonomousplane.autopilot.interfaces,
  es.upv.pros.tatami.osgi.utils.logger,
  org.osgi.framework;version="1.3.0"
 Automatic-Module-Name: autopilot.EmergencyLandingFallbackPlan
+Export-Package: autopilot.emergencylandingfallbackplan

@@ -32,7 +32,7 @@ public class WeatherSensor extends Thing implements IWeatherSensor{
 	public static final double AIR_DENSITY_AT_SEA_LEVEL = 1.225; // kg/m^3 at sea level
 	public static final double MIN_HUMIDITY = 0.0; // Min humidity in percentage
 	public static final double MAX_HUMIDITY = 100.0; // Max humidity in percentage
-	private static altitudeListener listener = null;
+	private static AltitudeListener listener = null;
 	public WeatherSensor(BundleContext context, String id) {
 		super(context, id);
 		this.addImplementedInterface(IWeatherSensor.class.getName());
@@ -45,7 +45,7 @@ public class WeatherSensor extends Thing implements IWeatherSensor{
 		this.setWindDirection(0.0); // Default wind direction in degrees
 		this.setHumidity(80.0); // Default humidity in percentage
 		this.setHPA(calculatePressureHpa());
-		listener = new altitudeListener(context, this);
+		listener = new AltitudeListener(context, this);
 	}
 
 	@Override
@@ -208,51 +208,62 @@ public class WeatherSensor extends Thing implements IWeatherSensor{
 		return (double) this.getProperty(WeatherSensor.HPA);
 	}
 	
-	public class altitudeListener implements ServiceListener {
-		private final BundleContext context;
-		private final WeatherSensor weatherSensor;
-	
-		public altitudeListener(BundleContext context, WeatherSensor weatherSensor) {
-			this.context = context;
-			this.weatherSensor = weatherSensor;
-		}
-		public void start() {
-			String filter = "(" + Constants.OBJECTCLASS + "=" + IAltitudeSensor.class.getName() + ")";
-			try {
-				this.context.addServiceListener(this, filter);
-			} catch (InvalidSyntaxException e) {
-				e.printStackTrace();
-			}
-		}
+	public class AltitudeListener implements ServiceListener {
+	    private final BundleContext context;
+	    private final WeatherSensor weatherSensor;
 
-		public void stop() {
-			this.context.removeServiceListener(this);
-		}
+	    // Última altitud registrada para evitar recalcular todo sin cambios
+	    private Double lastAltitude = null;
 
-		public void serviceChanged(ServiceEvent event) {
+	    public AltitudeListener(BundleContext context, WeatherSensor weatherSensor) {
+	        this.context = context;
+	        this.weatherSensor = weatherSensor;
+	    }
+
+	    public void start() {
+	        String filter = "(" + Constants.OBJECTCLASS + "=" + IAltitudeSensor.class.getName() + ")";
+	        try {
+	            this.context.addServiceListener(this, filter);
+	        } catch (InvalidSyntaxException e) {
+	            e.printStackTrace();
+	        }
+	    }
+
+	    public void stop() {
+	        this.context.removeServiceListener(this);
+	    }
+
+	    @Override
+	    public void serviceChanged(ServiceEvent event) {
 	        ServiceReference<?> ref = event.getServiceReference();
 
-            switch (event.getType()) {
-			case ServiceEvent.REGISTERED:
-			case ServiceEvent.MODIFIED:
-	            IAltitudeSensor altimeterSensor = (IAltitudeSensor) context.getService(ref);
-	            if (altimeterSensor != null) {
-	               double getAltitude = altimeterSensor.getAltitude();
-	               weatherSensor.setAirDensity(weatherSensor.calculateAirDensity(getAltitude));
-	               weatherSensor.setTemperature(weatherSensor.calculateTemp(getAltitude));
-	               weatherSensor.setHumidity(weatherSensor.calculateHumidity(getAltitude));
-	               weatherSensor.setHPA(weatherSensor.calculatePressureHpa());
-	               
-	            }
-					break;
+	        switch (event.getType()) {
+	            case ServiceEvent.REGISTERED:
+	            case ServiceEvent.MODIFIED:
+	                IAltitudeSensor altimeterSensor = (IAltitudeSensor) context.getService(ref);
+	                if (altimeterSensor != null) {
+	                    double altitude = altimeterSensor.getAltitude();
+
+	                    // Solo recalcular si cambia la altitud más de 0.01 metros (tolerancia)
+	                    if (lastAltitude == null || Math.abs(altitude - lastAltitude) > 0.01) {
+	                        weatherSensor.setAirDensity(weatherSensor.calculateAirDensity(altitude));
+	                        weatherSensor.setTemperature(weatherSensor.calculateTemp(altitude));
+	                        weatherSensor.setHumidity(weatherSensor.calculateHumidity(altitude));
+	                        weatherSensor.setHPA(weatherSensor.calculatePressureHpa());
+
+	                        lastAltitude = altitude;
+	                    }
+	                }
+	                break;
+
 	            case ServiceEvent.UNREGISTERING:
-				case ServiceEvent.MODIFIED_ENDMATCH:
-				default:
-					break;
-	       
-            }
-		}
+	            case ServiceEvent.MODIFIED_ENDMATCH:
+	            default:
+	                break;
+	        }
+	    }
 	}
+
 
 
 }

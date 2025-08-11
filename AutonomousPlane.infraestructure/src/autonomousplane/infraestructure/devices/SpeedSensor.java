@@ -181,77 +181,92 @@ public class SpeedSensor extends Thing implements ISpeedSensor {
 			return Math.max(MIN_SPEED, Math.min(speed, MAX_SPEED));
 	    }
 
-	public class FADECListener implements ServiceListener {
-		private final BundleContext context;
-		private final SpeedSensor speedSensor;
-	
-		public FADECListener(BundleContext context, SpeedSensor speedSensor) {
-			this.context = context;
-			this.speedSensor = speedSensor;
-		}
-		public void start() {
-		    String filter = "(|(" + Constants.OBJECTCLASS + "=" + IFADEC.class.getName() + ")"
-		        + "(" + Constants.OBJECTCLASS + "=" + IWeatherSensor.class.getName() + ")"
-		        + "(" + Constants.OBJECTCLASS + "=" + IAttitudeSensor.class.getName() + ")"
-		        + "(" + Constants.OBJECTCLASS + "=" + IControlSurfaces.class.getName() + "))";
-		    try {
-		        this.context.addServiceListener(this, filter);
-		    } catch (InvalidSyntaxException e) {
-		        e.printStackTrace();
+	  public class FADECListener implements ServiceListener {
+		    private final BundleContext context;
+		    private final SpeedSensor speedSensor;
+
+		    // Guardar último valor para evitar ejecuciones redundantes
+		    private Double lastAcceleration = null;
+
+		    public FADECListener(BundleContext context, SpeedSensor speedSensor) {
+		        this.context = context;
+		        this.speedSensor = speedSensor;
 		    }
-		}
 
-		public void stop() {
-			this.context.removeServiceListener(this);
-		}
-
-		public void serviceChanged(ServiceEvent event) {
-		    switch (event.getType()) {
-		        case ServiceEvent.REGISTERED:
-		        case ServiceEvent.MODIFIED:
-		            IFADEC fadec = getService(IFADEC.class);
-		            IWeatherSensor weatherSensor = getService(IWeatherSensor.class);
-		            IAttitudeSensor attitudeSensor = getService(IAttitudeSensor.class);
-		            IControlSurfaces controlSurfaces = getService(IControlSurfaces.class);
-		            IRadioAltimeterSensor radioAltimeterSensor = getService(IRadioAltimeterSensor.class);
-		            IAltitudeSensor altimeterSensor = getService(IAltitudeSensor.class);
-		            if (fadec != null && weatherSensor != null && attitudeSensor != null && controlSurfaces != null) {
-		                double thrust = fadec.getCurrentThrust();
-		                double airDensity = weatherSensor.getAirDensity();
-		                double airBrakeLevel = controlSurfaces.getAirbrakeDeployment();
-		                double pitchDegrees = attitudeSensor.getPitch();
-		                boolean isOnGround = radioAltimeterSensor.isOnGround();
-		                double altitude = altimeterSensor.getAltitude();
-		                double acceleration = speedSensor.calcualteSpeedIncreaseTAS(thrust, airDensity, airBrakeLevel, pitchDegrees, isOnGround, altitude);
-		                if(speedSensor.getSpeedTAS() == 0.0 && acceleration < 0.0 || speedSensor.getSpeedTAS() == speedSensor.MAX_SPEED && acceleration > 0.0) {
-		                    acceleration = 0.0; // Evitar que la velocidad se vuelva negativa al inicio
-		                }
-		                speedSensor.setSpeedIncreaseTAS(acceleration);
-		            }
-		            break;
-		        case ServiceEvent.UNREGISTERING:
-		        case ServiceEvent.MODIFIED_ENDMATCH:
-		        default:
-		            break;
-		    }
-		}
-
-		// Helper method to get the first available service of a given type
-		private <T> T getService(Class<T> clazz) {
-		    try {
-		        ServiceReference<?>[] refs = context.getServiceReferences(clazz.getName(), null);
-		        if (refs != null && refs.length > 0) {
-		            return clazz.cast(context.getService(refs[0]));
+		    public void start() {
+		        String filter = "(|(" + Constants.OBJECTCLASS + "=" + IFADEC.class.getName() + ")"
+		                + "(" + Constants.OBJECTCLASS + "=" + IWeatherSensor.class.getName() + ")"
+		                + "(" + Constants.OBJECTCLASS + "=" + IAttitudeSensor.class.getName() + ")"
+		                + "(" + Constants.OBJECTCLASS + "=" + IControlSurfaces.class.getName() + "))";
+		        try {
+		            this.context.addServiceListener(this, filter);
+		        } catch (InvalidSyntaxException e) {
+		            e.printStackTrace();
 		        }
-		    } catch (Exception e) {
-		        e.printStackTrace();
 		    }
-		    return null;
-		}
 
-		
-		
-	}
+		    public void stop() {
+		        this.context.removeServiceListener(this);
+		    }
+
+		    @Override
+		    public void serviceChanged(ServiceEvent event) {
+		        switch (event.getType()) {
+		            case ServiceEvent.REGISTERED:
+		            case ServiceEvent.MODIFIED:
+		                IFADEC fadec = getService(IFADEC.class);
+		                IWeatherSensor weatherSensor = getService(IWeatherSensor.class);
+		                IAttitudeSensor attitudeSensor = getService(IAttitudeSensor.class);
+		                IControlSurfaces controlSurfaces = getService(IControlSurfaces.class);
+		                IRadioAltimeterSensor radioAltimeterSensor = getService(IRadioAltimeterSensor.class);
+		                IAltitudeSensor altimeterSensor = getService(IAltitudeSensor.class);
+
+		                if (fadec != null && weatherSensor != null && attitudeSensor != null && controlSurfaces != null) {
+		                    double thrust = fadec.getCurrentThrust();
+		                    double airDensity = weatherSensor.getAirDensity();
+		                    double airBrakeLevel = controlSurfaces.getAirbrakeDeployment();
+		                    double pitchDegrees = attitudeSensor.getPitch();
+		                    boolean isOnGround = radioAltimeterSensor.isOnGround();
+		                    double altitude = altimeterSensor.getAltitude();
+
+		                    double acceleration = speedSensor.calcualteSpeedIncreaseTAS(
+		                        thrust, airDensity, airBrakeLevel, pitchDegrees, isOnGround, altitude
+		                    );
+
+		                    // Evitar valores fuera de rango
+		                    if ((speedSensor.getSpeedTAS() == 0.0 && acceleration < 0.0) ||
+		                        (speedSensor.getSpeedTAS() == speedSensor.MAX_SPEED && acceleration > 0.0)) {
+		                        acceleration = 0.0;
+		                    }
+
+		                    // Solo actualizar si hay cambios reales
+		                    if (lastAcceleration == null || Math.abs(acceleration - lastAcceleration) > 0.0001) {
+		                        speedSensor.setSpeedIncreaseTAS(acceleration);
+		                        lastAcceleration = acceleration;
+		                    }
+		                }
+		                break;
+
+		            case ServiceEvent.UNREGISTERING:
+		            case ServiceEvent.MODIFIED_ENDMATCH:
+		            default:
+		                break;
+		        }
+		    }
+
+		    // Helper para obtener el primer servicio disponible de un tipo
+		    private <T> T getService(Class<T> clazz) {
+		        try {
+		            ServiceReference<?>[] refs = context.getServiceReferences(clazz.getName(), null);
+		            if (refs != null && refs.length > 0) {
+		                return clazz.cast(context.getService(refs[0]));
+		            }
+		        } catch (Exception e) {
+		            e.printStackTrace();
+		        }
+		        return null;
+		    }
+		}
 
 
 

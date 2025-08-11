@@ -10,7 +10,7 @@ public class FrozenWarning extends InteractionMechanism {
 
 	@Override
 	public FrozenWarning performTheInteraction(String message) {
-		System.out.println("Frozen Warning ❄️ - " + message);
+		this.showMessage("❄️ " + message);
 		return this;
 	}
 

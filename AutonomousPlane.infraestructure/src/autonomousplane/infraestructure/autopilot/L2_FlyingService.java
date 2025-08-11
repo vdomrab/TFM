@@ -104,7 +104,7 @@ public abstract class L2_FlyingService extends L1_FlyingService implements IL2_F
 	
 	public IL2_FlyingService performTheTakeOver() {
 		this.endFlight();
-		this.getNotificationService().notify("Exited Autonomous Mode");
+		this.getNotificationService().notify("Exited Autonomous Mode", "GeneralWarning");
 		return this;
 	}
 	public IL2_FlyingService activateTheFallbackPlan() {

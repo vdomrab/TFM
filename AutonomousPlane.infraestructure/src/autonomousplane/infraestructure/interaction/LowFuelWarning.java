@@ -10,7 +10,7 @@ public class LowFuelWarning extends InteractionMechanism {
 
 	@Override
 	public LowFuelWarning performTheInteraction(String message) {
-		System.out.println("¨LowFuel Warning ⛽ - " + message);
+		this.showMessage("¨LowFuel Warning ⛽ - " + message);
 		return this;
 	}
 }

@@ -31,7 +31,7 @@ public class SpeedChangeListener implements ServiceListener {
 	@Override
 	public void serviceChanged(ServiceEvent event) {
 	
-		IFADEC FADEC = (IFADEC)context.getService(event.getServiceReference());
+		//IFADEC FADEC = (IFADEC)context.getService(event.getServiceReference());
 		switch (event.getType()) {
 		case ServiceEvent.REGISTERED:
 		case ServiceEvent.MODIFIED:

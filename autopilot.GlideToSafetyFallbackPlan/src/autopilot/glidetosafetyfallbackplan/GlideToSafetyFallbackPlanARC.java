@@ -24,11 +24,12 @@ public class GlideToSafetyFallbackPlanARC extends FallbackPlanARC{
 	public static String REQUIRED_ETL = "required_etl";
 	public static String REQUIRED_SPEEDSENSOR = "required_speedsensor";
 	public static String REQUIRED_PROXIMITYSENSOR = "required_proximitysensor";
-	
+	public static String REQUIRED_NOTIFICATIONSERVICE = "required_notificationservice";
+
 	public GlideToSafetyFallbackPlanARC(BundleContext context, String bundleId) {
 		super(context, context.getBundle().getSymbolicName());
 		logger = SmartLogger.getLogger(context.getBundle().getSymbolicName());
-		this.setTheFlyingService(new GlideToSafetyFallbackPlan(context, bundleId));
+		this.setTheFlyingService(new GlideToSafetyFallbackPlan(this.context, bundleId));
 	}
 	
 	public IGlideToSafetyFallbackPlan getTheGlideToSafetyFallbackPlanFlyingService() {
@@ -42,15 +43,17 @@ public class GlideToSafetyFallbackPlanARC extends FallbackPlanARC{
 			this.getTheGlideToSafetyFallbackPlanFlyingService().setControlSurfaces((IControlSurfaces) value);
 		}else if(req.equals(REQUIRED_ATTITUDESENSOR)) {
 			this.getTheGlideToSafetyFallbackPlanFlyingService().setAttitudeSensor((IAttitudeSensor) value);
-
 		} else if(req.equals(REQUIRED_ALTITUDESENSOR)) {
 			this.getTheGlideToSafetyFallbackPlanFlyingService().setAltitudeSensor((IAltitudeSensor) value);
 		} else if(req.equals(REQUIRED_ETL)) {
+			System.out.println("Binding ETL sensor: " + value);
 			this.getTheGlideToSafetyFallbackPlanFlyingService().setETLSensor((IETL) value);		
 		} else if(req.equals(REQUIRED_SPEEDSENSOR)) {
 			this.getTheGlideToSafetyFallbackPlanFlyingService().setSpeedSensor((ISpeedSensor) value);
 		} else if(req.equals(REQUIRED_PROXIMITYSENSOR)) {
 			this.getTheGlideToSafetyFallbackPlanFlyingService().setProximitySensor((IProximitySensor) value);
+		} else if(req.equals(REQUIRED_NOTIFICATIONSERVICE)) {
+			this.getTheGlideToSafetyFallbackPlanFlyingService().setNotificationService((autonomousplane.interaction.interfaces.INotificationService) value);
 		} else {
 			logger.error("Unknown service required: " + req);
 		}
@@ -74,6 +77,8 @@ public class GlideToSafetyFallbackPlanARC extends FallbackPlanARC{
 			this.getTheGlideToSafetyFallbackPlanFlyingService().setSpeedSensor(null);
 		} else if(req.equals(REQUIRED_PROXIMITYSENSOR)) {
 			this.getTheGlideToSafetyFallbackPlanFlyingService().setProximitySensor(null);
+		} else if(req.equals(REQUIRED_NOTIFICATIONSERVICE)) {
+			this.getTheGlideToSafetyFallbackPlanFlyingService().setNotificationService(null);
 		} else {
 			logger.error("Unknown service required: " + req);
 		}

@@ -1,4 +1,4 @@
-package autonomousplane.l3_advancedautomation;
+package autonomousplane.l3_lowfuelconsumption;
 
 import org.osgi.framework.BundleContext;
 
@@ -13,7 +13,6 @@ import autonomousplane.devices.interfaces.IAltitudeSensor;
 import autonomousplane.devices.interfaces.IAttitudeSensor;
 import autonomousplane.devices.interfaces.IControlSurfaces;
 import autonomousplane.devices.interfaces.IEGTSensor;
-import autonomousplane.devices.interfaces.IETL;
 import autonomousplane.devices.interfaces.IFADEC;
 import autonomousplane.devices.interfaces.IFuelSensor;
 import autonomousplane.devices.interfaces.ILandingSystem;
@@ -25,76 +24,77 @@ import autonomousplane.devices.interfaces.IWeatherSensor;
 import autonomousplane.infraestructure.OSGiUtils;
 import autonomousplane.infraestructure.autopilot.L3_FlyingService;
 import autonomousplane.infraestructure.devices.EGTSensor;
-import autonomousplane.infraestructure.devices.LandingSystem;
-import autonomousplane.infraestructure.devices.ProximitySensor;
 import autonomousplane.infraestructure.devices.SpeedSensor;
 import autonomousplane.interaction.interfaces.INotificationService;
 import autonomousplane.interfaces.EFlyingStages;
 import autonomousplane.simulation.simulator.PlaneSimulationElement;
 import es.upv.pros.tatami.osgi.utils.logger.SmartLogger;
-public class L3_AdvancedAutomation extends L3_FlyingService implements IL3_AdvancedAutomation {
-	public L3_AdvancedAutomation(BundleContext context, String id) {
+public class L3_LowFuelConsumption extends L3_FlyingService implements IL3_AdvancedAutomation {
+	public L3_LowFuelConsumption(BundleContext context, String id) {
 		super(context, id);
 		logger = SmartLogger.getLogger(context.getBundle().getSymbolicName());
 		this.setStabilityModeActive(true);
 		this.setLowFuelMode();
 	}
+	
 	protected void setLowFuelMode() {
 		if(this.getFuelSensor() != null) {
 			if(!this.getFuelSensor().isLowFuelMode()) {
-				this.getFuelSensor().setLowFuelMode(false);
+				this.getFuelSensor().setLowFuelMode(true);
 			}
 		}
 	}
 	@Override
 	public IFlyingService performTheFlyingFunction() {
-	    if(checkServices()) {
-		    logger.info("Performing advanced automation...");
+		if(checkServices()) {
+					    logger.info("Performing flying function in L3_LowFuelConsumption.");
+					    System.out.println("Current Thrust: MONICIUS");
 
-	    boolean correctionRequired = false;
-	    this.setLowFuelMode(); // Ensure low fuel mode is set
-	    double pitch = this.AHRSSensor.getPitch();
-	    double roll = this.AHRSSensor.getRoll();
-        EFlyingStages stage = this.navigationSystem.getCurrentFlyghtStage();
-        correctionRequired |= handleEngineFailure();
-        correctionRequired |= checkTerrainAwareness(stage, radioAltimeterSensor.getGroundDistance(), altimeterSensor.getVerticalSpeed());
-        correctionRequired |= handleStallWarnings();
-        correctionRequired |= hangleEngineHeating();
-        correctionRequired |= handleLowFuel();
-        correctionRequired |= handleObjectsProximity(this.getProximitySensor().isObjectDetected());
-	    if (this.getStabilityModeActive()) {
-	        correctionRequired |= correctRollIfNeeded(roll);
+		    boolean correctionRequired = false;
+		    this.setLowFuelMode(); // Ensure low fuel mode is set
+		    double pitch = this.AHRSSensor.getPitch();
+		    double roll = this.AHRSSensor.getRoll();
+	        EFlyingStages stage = this.navigationSystem.getCurrentFlyghtStage();
 
-	        switch (stage) {
-	            case CLIMB:
-	                correctionRequired |= handleClimbPhase(pitch);
-	                break;
-	            case DESCENT:
-	                manageDescentAndApproach();
-	                break;
-	            case CRUISE:
-	                adjustPitchThrustToMaintainAltitudeAndSpeedCruise();
-	                break;
-	            case TAKEOFF:
-	               correctionRequired |= handleTakeoffPhase(pitch);
-	                break;
-	            case LANDING:
-	                manageDescentAndApproach();
-	                break;
-	            default:
-	                break; // Other phases ignored here
-	        }
-	    }
-	       
-	        if (!correctionRequired) {
-	            logger.info("Monitoring flying parameters. Nothing to warn ...");
-	        }
-	    
-	    } else {
-	        logger.error("Cannot perform flying function missing essential components.");
-	    }
-	    return this;
-	}
+	        correctionRequired |= handleEngineFailure();
+	        correctionRequired |= checkTerrainAwareness(stage, radioAltimeterSensor.getGroundDistance(), altimeterSensor.getVerticalSpeed());
+	        correctionRequired |= handleStallWarnings();
+	        correctionRequired |= hangleEngineHeating();
+	        correctionRequired |= handleLowFuel();
+	        correctionRequired |= handleObjectsProximity(this.getProximitySensor().isObjectDetected());
+	        if (this.getStabilityModeActive()) {
+		        correctionRequired |= correctRollIfNeeded(roll);
+
+		        switch (stage) {
+		            case CLIMB:
+		                correctionRequired |= handleClimbPhase(pitch);
+		                break;
+		            case DESCENT:
+		                manageDescentAndApproach();
+		                break;
+		            case CRUISE:
+		                adjustPitchThrustToMaintainAltitudeAndSpeedCruise();
+		                break;
+		            case TAKEOFF:
+		               correctionRequired |= handleTakeoffPhase(pitch);
+		                break;
+		            case LANDING:
+		                manageDescentAndApproach();
+		                break;
+		            default:
+		                break; // Other phases ignored here
+		        }
+		    }
+		       
+		        if (!correctionRequired) {
+		            logger.info("Monitoring flying parameters. Nothing to warn ...");
+		        }
+		    
+		    } else {
+		        logger.error("Cannot perform flying function missing essential components.");
+		    }
+		    return this;
+		}
 	private boolean hangleEngineHeating() {
 	    boolean correctionRequired = false;
 
@@ -195,15 +195,15 @@ public class L3_AdvancedAutomation extends L3_FlyingService implements IL3_Advan
 	    double realaltitude = altimeterSensor.getAltitude() - radioAltimeterSensor.getRealGroundAltitude();
 		if(realaltitude > 2000.0 && ( this.getFADEC().getCurrentThrust() <= 60 || this.getFADEC().getCurrentThrust() > 89.0) ) {
 	        this.getFADEC().setTHRUSTPercentage(75.0);
-	        logger.info("CLIMB: increasing thrust to 75%");
+	        logger.info("CLIMB: Changing thrust to 75%");
 	        correctionDone = true;
 
     	}else if (realaltitude <= 2000){
 	    
-    		if (this.getFADEC().getCurrentThrust() < 90.0) {
+    		if (this.getFADEC().getCurrentThrust() < 91.0) {
 	    
-		        this.getFADEC().setTHRUSTPercentage(90.0);
-		        logger.info("CLIMB: increasing thrust to 90%");	
+		        this.getFADEC().setTHRUSTPercentage(91.0);
+		        logger.info("CLIMB: Changing thrust to 91%");	
 	    	}
 	        correctionDone = true;
 	    }
@@ -367,8 +367,8 @@ public class L3_AdvancedAutomation extends L3_FlyingService implements IL3_Advan
 	    return false;
 	}
 
+
 	private void notifyStallCondition(String message, double aoa) {
-	    logger.info("Plane " + message);
 	    if (this.getNotificationService() != null && this.getNotificationService().isMechanismAvailable("StallWarning")) {
 	        this.getNotificationService().notify("Plane " + message + ": " + aoa, "StallWarning");
 	    }
@@ -462,9 +462,10 @@ public class L3_AdvancedAutomation extends L3_FlyingService implements IL3_Advan
 
 
 	    // Full thrust during takeoff
-	    if (this.getFADEC().getCurrentThrust() < 90.0) {
-	        this.getFADEC().setTHRUSTPercentage(90.0);
-	        logger.info("TAKEOFF: Setting full thrust (90%).");
+	    System.out.println("Current Thrust: " + this.getFADEC().getCurrentThrust());
+	    if (this.getFADEC().getCurrentThrust() < 91.0) {
+	        this.getFADEC().setTHRUSTPercentage(91.0);
+	        logger.info("TAKEOFF: Setting full thrust (91%).");
 	        correctionDone = true;
 	    }
 
@@ -588,7 +589,7 @@ public class L3_AdvancedAutomation extends L3_FlyingService implements IL3_Advan
 	    double densityFactor = this.getAHRSSensor().calculateDensityFactor(weatherSensor);
 	    
 	    
-	    double SPEED_TARGET = 236.0; // 850 km/h ≈ 236 m/s
+	    double SPEED_TARGET = 235.0; // 850 km/h ≈ 236 m/s
 	    double SPEED_TOLERANCE = 5.8; // 10 km/h ≈ 2.8 m/s
 	    
 	    if(altitude < 10000) {
@@ -718,7 +719,6 @@ public class L3_AdvancedAutomation extends L3_FlyingService implements IL3_Advan
 	        this.getControlSurfaces().setAirbrakeDeployment(0.0);
 	    }
 	}
-	
 	private boolean checkServices() {
 		 IAOASensor aoaSensor = OSGiUtils.getService(context, IAOASensor.class);
 		 IAttitudeSensor attitudeSensor = OSGiUtils.getService(context, IAttitudeSensor.class);
@@ -749,7 +749,4 @@ public class L3_AdvancedAutomation extends L3_FlyingService implements IL3_Advan
 	           notificationService != null &&
 	           proximitySensor != null;
 	}
-	
-	
 }
-

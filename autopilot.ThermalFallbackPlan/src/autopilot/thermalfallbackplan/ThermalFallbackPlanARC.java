@@ -9,11 +9,13 @@ import autonomousplane.devices.interfaces.IEGTSensor;
 import autonomousplane.devices.interfaces.IFADEC;
 import autonomousplane.devices.interfaces.IWeatherSensor;
 import autonomousplane.infraestructure.autopilotARC.FallbackPlanARC;
+import autonomousplane.interaction.interfaces.INotificationService;
 
 public class ThermalFallbackPlanARC extends FallbackPlanARC {
 	public static String REQUIRED_FADEC = "required_fadec";
 	public static String REQUIRED_WEATHERSENSOR = "required_weathersensor";
 	public static String REQUIRED_EGTSENSOR = "required_egtsensor";
+	public static String REQUIRED_NOTIFICATIONSERVICE = "required_notificationservice";
 
 	public ThermalFallbackPlanARC(BundleContext context, String bundleId) {
 		super(context, context.getBundle().getSymbolicName());
@@ -32,6 +34,8 @@ public class ThermalFallbackPlanARC extends FallbackPlanARC {
 			this.getTheThermalFallbackPlanFlyingService().setWeatherSensor((IWeatherSensor) value);
 		} else if (req.equals(REQUIRED_EGTSENSOR)) {
 			this.getTheThermalFallbackPlanFlyingService().setEGTSensor((IEGTSensor) value);
+		} else if (req.equals(REQUIRED_NOTIFICATIONSERVICE)) {
+			this.getTheThermalFallbackPlanFlyingService().setNotificationService((INotificationService) value);
 		} else {
 			logger.error("Unknown service required: " + req);
 		}
@@ -47,6 +51,8 @@ public class ThermalFallbackPlanARC extends FallbackPlanARC {
 			this.getTheThermalFallbackPlanFlyingService().setWeatherSensor(null);
 		} else if (req.equals(REQUIRED_EGTSENSOR)) {
 			this.getTheThermalFallbackPlanFlyingService().setEGTSensor(null);
+		} else if (req.equals(REQUIRED_NOTIFICATIONSERVICE)) {
+			this.getTheThermalFallbackPlanFlyingService().setNotificationService(null);
 		} else {
 			logger.error("Unknown service required: " + req);
 		}

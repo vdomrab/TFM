@@ -12,4 +12,6 @@ public interface IFuelSensor {
 	    double getFuelConsumptionRatePercentage(); // Retorna la tasa de consumo de combustible como porcentaje del máximo
 	    double getEstimatedEnduranceSeconds();
 	    double getEstimatedRangeMeters(double tas);// Retorna la autonomía de combustible en horas
+	    IFuelSensor setLowFuelMode(boolean mode); // Establece el modo de combustible (true para modo ahorro, false para modo normal)
+	    boolean isLowFuelMode(); // Retorna true si el modo de combustible es bajo
 }

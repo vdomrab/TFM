@@ -10,7 +10,7 @@ public class TAWS extends InteractionMechanism {
 
 	@Override
 	public TAWS performTheInteraction(String message) {
-		System.out.println("TAWS- " + message);
+		this.showMessage(message);
 		return this;
 	}
 

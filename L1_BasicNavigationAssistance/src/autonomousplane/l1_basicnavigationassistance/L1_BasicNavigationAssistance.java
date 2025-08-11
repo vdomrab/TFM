@@ -4,7 +4,11 @@ import org.osgi.framework.BundleContext;
 
 import autonomousplane.autopilot.interfaces.IFlyingService;
 import autonomousplane.autopilot.interfaces.IL1_BasicNavigationAssistance;
+import autonomousplane.devices.interfaces.IAttitudeSensor;
+import autonomousplane.devices.interfaces.IControlSurfaces;
+import autonomousplane.infraestructure.OSGiUtils;
 import autonomousplane.infraestructure.autopilot.L1_FlyingService;
+import autonomousplane.interaction.interfaces.INotificationService;
 import autonomousplane.simulation.simulator.PlaneSimulationElement;
 import es.upv.pros.tatami.osgi.utils.logger.SmartLogger;
 
@@ -18,9 +22,13 @@ public class L1_BasicNavigationAssistance extends L1_FlyingService implements IL
 
 	@Override
 	public IFlyingService performTheFlyingFunction() {
-		System.out.println("Performing basic navigation assistance L1...");
-		logger.info("Performing basic navigation assistance...");
-        double pitch = this.getAHRSSensor().getPitch();
+		logger.info("Performing L1 basic navigation assistance...");
+        
+		if (!checkServices()) {
+			logger.error("Required services are not available. Cannot perform flying function.");
+			return this;
+		}
+		double pitch = this.getAHRSSensor().getPitch();
         double roll = this.getAHRSSensor().getRoll();
         double yaw = this.getAHRSSensor().getYaw();
 		//AOA Sensor is used to monitor the flying parameters
@@ -86,7 +94,7 @@ public class L1_BasicNavigationAssistance extends L1_FlyingService implements IL
                 if (Math.abs(pitchError) < MIN_ROLL_ERROR_THRESHOLD) {
                     this.getControlSurfaces().setElevatorDeflection(0.0);
                 } else {
-                    logger.info(String.format("CLIMB: pitch correction -> current=%.2f°, error=%.2f°, deflection=%.2f°",
+                    logger.info(String.format("Flight: pitch correction -> current=%.2f°, error=%.2f°, deflection=%.2f°",
                         pitch, pitchError, requiredDeflection));
                     logger.info("Correcting Pitch angle...");
                     this.getControlSurfaces().setElevatorDeflection(requiredDeflection);
@@ -109,5 +117,13 @@ public class L1_BasicNavigationAssistance extends L1_FlyingService implements IL
 	private double clamp(double rate, double maxRate, double min_rate) {
 	    return Math.max(min_rate, Math.min(rate, maxRate));
 	}
+	private boolean checkServices() {
+	    IAttitudeSensor attitudeSensor = OSGiUtils.getService(context, IAttitudeSensor.class);
+	    IControlSurfaces controlSurfaces = OSGiUtils.getService(context, IControlSurfaces.class);
+	    INotificationService notificationService = OSGiUtils.getService(context, INotificationService.class);
 
+	    return attitudeSensor != null &&
+	           controlSurfaces != null &&
+	           notificationService != null;
+	}
 }

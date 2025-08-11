@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: L1_BasicNavigationAssistance
-Bundle-SymbolicName: L1_BasicNavigationAssistance
+Bundle-SymbolicName: autopilot.L1_BasicNavigationAssistance
 Bundle-Version: 1.0.0.qualifier
 Export-Package: autonomousplane.l1_basicnavigationassistance
 Bundle-Activator: autonomousplane.l1_basicnavigationassistance.Activator

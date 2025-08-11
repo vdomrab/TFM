@@ -7,6 +7,7 @@ import org.osgi.framework.ServiceEvent;
 import org.osgi.framework.ServiceListener;
 import org.osgi.framework.ServiceReference;
 
+import autonomousplane.autopilot.interfaces.IFlyingService;
 import autonomousplane.devices.interfaces.IAttitudeSensor;
 import autonomousplane.devices.interfaces.IControlSurfaces;
 import autonomousplane.devices.interfaces.IFADEC;
@@ -18,6 +19,7 @@ import autonomousplane.infraestructure.Thing;
 public class FuelSensor extends Thing implements IFuelSensor {
 	public final static String FUEL_LEVEL = "FUEL_LEVEL"; 
 	public final static String FUEL_CONSUMPTION_RATE = "FUEL_CONSUMPTION_RATE"; // kg/s
+	public final static String LOW_FUEL_MODE = "LOW_FUEL_MODE"; // boolean, true if low fuel mode is active
 	public final static double MIN_FUEL_LEVEL = 0.0; 
 	public static final double MAX_FUEL_KG = 26000.0;
     private static final double MAX_FLOW_RATE_KG_PER_SEC = 2.5; // consumo máx. a 100% thrust
@@ -30,14 +32,28 @@ public class FuelSensor extends Thing implements IFuelSensor {
         this.setFuelLevel(MAX_FUEL_KG);
         this.setFuelConsumptionRate(IDLE_BURN_RATE_KG_PER_SEC);
         this.listener = new FuelSensorListener(context, this);
+        this.setLowFuelMode(false); // Inicializar sin modo de bajo combustible
         // Inicializar con tasa máxima
     }
+    
+    @Override
+    public IFuelSensor setLowFuelMode(boolean mode) {
+		this.setProperty(LOW_FUEL_MODE, mode);
+		return this;
+	}
+    
+    @Override
+    public boolean isLowFuelMode() {
+		Object mode = this.getProperty(LOW_FUEL_MODE);
+		return mode != null && (boolean) mode;
+	}
+    
     
     @Override
     public double getFuelLevel() {
         return (double) this.getProperty(FUEL_LEVEL);
     }
-
+    
     @Override
     public double getFuelPercentage() {
         return (getFuelLevel() / MAX_FUEL_KG) * 100.0;
@@ -65,8 +81,12 @@ public class FuelSensor extends Thing implements IFuelSensor {
         double standardDensity = 1.225; // kg/m³
         double densityAdjustmentFactor = 1.0 + (standardDensity - airDensity) * 0.05;
         flowRateKgPerSec *= densityAdjustmentFactor;
-        // Return the instantaneous fuel consumption rate (kg/s)
-        return flowRateKgPerSec;
+
+        if (isLowFuelMode()) {
+        	System.out.println("Low fuel mode active, reducing fuel consumption rate by 30%");
+            flowRateKgPerSec *= 0.7; // 30% reduction
+        }
+        return flowRateKgPerSec;       
     }
 
     @Override
@@ -140,54 +160,62 @@ public class FuelSensor extends Thing implements IFuelSensor {
 			super.unregisterThing();
 			return this;
 	}
-    class FuelSensorListener implements ServiceListener {
-		private BundleContext context = null;
-		private FuelSensor sensor = null;
+	class FuelSensorListener implements ServiceListener {
+	    private BundleContext context;
+	    private FuelSensor sensor;
+	    private Double lastConsumptionRate = null; // último valor
 
-		public FuelSensorListener(BundleContext context, FuelSensor sensor) {
-			this.context = context;
-			this.sensor = sensor;
-		}
+	    public FuelSensorListener(BundleContext context, FuelSensor sensor) {
+	        this.context = context;
+	        this.sensor = sensor;
+	    }
 
-		public void start() {
-		    String filter = "(|(" + Constants.OBJECTCLASS + "=" + IFADEC.class.getName() + ")"
-		                        + "(" + Constants.OBJECTCLASS + "=" + IWeatherSensor.class.getName() + "))";
-		    try {
-		        this.context.addServiceListener(this, filter);
-		    } catch (InvalidSyntaxException e) {
-		        e.printStackTrace();
-		    }
-		}
+	    public void start() {
+	    	String filter = "(|(" + Constants.OBJECTCLASS + "=" + IFADEC.class.getName() + ")"
+	                + "(" + Constants.OBJECTCLASS + "=" + IWeatherSensor.class.getName() + "))";
+	               
+	        try {
+	            this.context.addServiceListener(this, filter);
+	        } catch (InvalidSyntaxException e) {
+	            e.printStackTrace();
+	        }
+	    }
 
+	    public void stop() {
+	        this.context.removeServiceListener(this);
+	    }
 
-		public void stop() {
-			this.context.removeServiceListener(this);
-		}
-
-		public void serviceChanged(ServiceEvent event) {
-			IFADEC fadec = getService(IFADEC.class);
+	    @Override
+	    public void serviceChanged(ServiceEvent event) {
+	        IFADEC fadec = getService(IFADEC.class);
 	        IWeatherSensor weatherSensor = getService(IWeatherSensor.class);
 
-	        if (fadec == null && weatherSensor == null) {
+	        if (fadec == null || weatherSensor == null) {
+	            return;
+	        }
 
-		        return; // No control surfaces or weather sensor available
-		    }
 	        double thrustPercentage = fadec.getCurrentThrust();
 	        double airDensity = weatherSensor.getAirDensity();
-	        double consumptionRate = sensor.updateFuelConsumption(thrustPercentage, airDensity); 
+	        double consumptionRate = sensor.updateFuelConsumption(thrustPercentage, airDensity);
+
 	        switch (event.getType()) {
-		        case ServiceEvent.REGISTERED:
-		        case ServiceEvent.MODIFIED:
-		        	sensor.setFuelConsumptionRate(consumptionRate);
-		            break;
-		        case ServiceEvent.UNREGISTERING:
-		        case ServiceEvent.MODIFIED_ENDMATCH:
-		        	sensor.setFuelConsumptionRate(0.0); // Reset consumption rate when service is unregistered
-		            break;
-		        default:
-		            break;
-		    }
-		}
+	            case ServiceEvent.REGISTERED:
+	            case ServiceEvent.MODIFIED:
+	                // Solo actualizar si ha cambiado
+	                if (lastConsumptionRate == null || lastConsumptionRate != consumptionRate) {
+	                    sensor.setFuelConsumptionRate(consumptionRate);
+	                    lastConsumptionRate = consumptionRate;
+	                }
+	                break;
+	            case ServiceEvent.UNREGISTERING:
+	            case ServiceEvent.MODIFIED_ENDMATCH:
+	                sensor.setFuelConsumptionRate(0.0);
+	                lastConsumptionRate = 0.0;
+	                break;
+	        }
+	    }
+	
+
 		
 		private <T> T getService(Class<T> clazz) {
 		    try {

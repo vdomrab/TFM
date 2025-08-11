@@ -10,7 +10,7 @@ public class OverheatWarning extends InteractionMechanism {
 
 	@Override
 	public OverheatWarning performTheInteraction(String message) {
-		System.out.println("Overheat Warning 🔥 - " + message);
+		this.showMessage("🔥 " + message);
 		return this;
 	}
 

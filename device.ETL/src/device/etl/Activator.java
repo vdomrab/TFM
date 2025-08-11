@@ -16,11 +16,11 @@ public class Activator implements BundleActivator {
 	public void start(BundleContext bundleContext) throws Exception {
 		Activator.context = bundleContext;
 		etlARC = new ETLARC(bundleContext, "ETL");
-		etlARC.deploy();
+		etlARC.start();
 	}
 
 	public void stop(BundleContext bundleContext) throws Exception {
-		etlARC.undeploy();
+		etlARC.stop();
 		etlARC = null;
 		Activator.context = null;
 	}

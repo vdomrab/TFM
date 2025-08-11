@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: L3_AdvancedAutomation
-Bundle-SymbolicName: L3_AdvancedAutomation
+Bundle-SymbolicName: autopilot.L3_AdvancedAutomation
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: autonomousplane.l3_advancedautomation.Activator
 Bundle-RequiredExecutionEnvironment: JavaSE-21

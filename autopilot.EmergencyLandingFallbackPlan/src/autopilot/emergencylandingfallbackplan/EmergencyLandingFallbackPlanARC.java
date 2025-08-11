@@ -15,6 +15,7 @@ import autonomousplane.devices.interfaces.IRadioAltimeterSensor;
 import autonomousplane.devices.interfaces.ISpeedSensor;
 import autonomousplane.devices.interfaces.IWeatherSensor;
 import autonomousplane.infraestructure.autopilotARC.FallbackPlanARC;
+import autonomousplane.interaction.interfaces.INotificationService;
 import es.upv.pros.tatami.adaptation.mapek.lite.ARC.artifacts.impl.AdaptiveReadyComponent;
 import es.upv.pros.tatami.adaptation.mapek.lite.ARC.artifacts.interfaces.IAdaptiveReadyComponent;
 import es.upv.pros.tatami.osgi.utils.logger.SmartLogger;
@@ -32,10 +33,12 @@ public class EmergencyLandingFallbackPlanARC extends FallbackPlanARC {
 	public static String REQUIRED_LANDINGSYSTEM = "required_landingsystem";
 	public static String REQUIRED_FUELSENSOR = "required_fuelsensor";
 	public static String REQUIRED_WEATHERSENSOR = "required_weathersensor";
-	public EmergencyLandingFallbackPlanARC(BundleContext context, String bundleName) {
-		super(context, bundleName);
+	public static String REQUIRED_NOTIFICATIONSERVICE = "required_notificationservice";
+
+	public EmergencyLandingFallbackPlanARC(BundleContext context, String bundleId) {
+		super(context, context.getBundle().getSymbolicName());
 		logger = SmartLogger.getLogger(context.getBundle().getSymbolicName());
-		this.setTheFlyingService(new EmergencyLandingFallbackPlan(context, bundleName));
+		this.setTheFlyingService(new EmergencyLandingFallbackPlan(context, bundleId));
 	}
 
 	public IEmergencyLandingFallbackPlan getTheEmergencyLandingFallbackPlanFlyingService() {
@@ -65,6 +68,8 @@ public class EmergencyLandingFallbackPlanARC extends FallbackPlanARC {
 			this.getTheEmergencyLandingFallbackPlanFlyingService().setFuelSensor((IFuelSensor) value);
 		} else if (req.equals(REQUIRED_WEATHERSENSOR)) {
 			this.getTheEmergencyLandingFallbackPlanFlyingService().setWeatherSensor((IWeatherSensor) value);
+		} else if (req.equals(REQUIRED_NOTIFICATIONSERVICE)) {
+			this.getTheEmergencyLandingFallbackPlanFlyingService().setNotificationService((INotificationService) value);
 		} else {
 			logger.error("Unknown service required: " + req);
 		}
@@ -95,6 +100,8 @@ public class EmergencyLandingFallbackPlanARC extends FallbackPlanARC {
 			this.getTheEmergencyLandingFallbackPlanFlyingService().setFuelSensor(null);
 		} else if (req.equals(REQUIRED_WEATHERSENSOR)) {
 			this.getTheEmergencyLandingFallbackPlanFlyingService().setWeatherSensor(null);
+		} else if (req.equals(REQUIRED_NOTIFICATIONSERVICE)) {
+			this.getTheEmergencyLandingFallbackPlanFlyingService().setNotificationService(null);
 		} else {
 			logger.error("Unknown service required: " + req);
 		}

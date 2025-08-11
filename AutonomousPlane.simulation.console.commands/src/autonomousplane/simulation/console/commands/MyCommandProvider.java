@@ -10,9 +10,21 @@ import org.osgi.framework.ServiceReference;
 
 import autonomousplane.autopilot.interfaces.IFlyingService;
 import autonomousplane.autopilot.interfaces.IL0_ManualNavigation;
+import autonomousplane.autopilot.interfaces.IL1_BasicNavigationAssistance;
+import autonomousplane.autopilot.interfaces.IL1_FlyingService;
+import autonomousplane.autopilot.interfaces.IL2_FlyingService;
+import autonomousplane.autopilot.interfaces.IL2_PartialAutomation;
+import autonomousplane.autopilot.interfaces.IL3_AdvancedAutomation;
+import autonomousplane.autopilot.interfaces.IL3_FlyingService;
+import autonomousplane.autopilot.interfaces.IL3_IntenseWeatherNavigation;
+import autonomousplane.autopilot.interfaces.IL3_LowFuelConsumption;
 import autonomousplane.devices.interfaces.*;
 import autonomousplane.infraestructure.OSGiUtils;
+import autonomousplane.infraestructure.autopilot.L1_FlyingService;
+import autonomousplane.infraestructure.autopilot.L2_FlyingService;
+import autonomousplane.infraestructure.autopilot.L3_FlyingService;
 import autonomousplane.infraestructure.devices.AOASensor;
+import autonomousplane.infraestructure.devices.ControlSurfaces;
 import autonomousplane.infraestructure.devices.FuelSensor;
 import autonomousplane.infraestructure.devices.RadioAltimeterSensor;
 import autonomousplane.infraestructure.devices.SpeedSensor;
@@ -72,6 +84,27 @@ public class MyCommandProvider {
 		System.out.println(" - - - - - - - - - - - - - - - - - - - - - - - -");
 		System.out.println(String.format("|     Plane ID: %s", flyingService.getId()));
 		System.out.println(String.format("|     Step-Speed : %s", PlaneSimulationElement.getTimeStep() ));
+		if(flyingService instanceof IL0_ManualNavigation) {
+			System.out.println("|     Navigation Mode: L0 - Manual Navigation");
+		} else if (flyingService instanceof IL3_FlyingService) {
+			if(flyingService instanceof IL3_AdvancedAutomation)
+				System.out.println("|     Navigation Mode: L3 - ");
+			if(flyingService instanceof IL3_LowFuelConsumption)
+				System.out.println("|     Navigation Mode: L3 - Low Fuel Consumption");
+			if(flyingService instanceof IL3_IntenseWeatherNavigation)
+				System.out.println("|     Navigation Mode: L3 - Intense Weather Navigation");
+			System.out.println(String.format("|     Autopilot status: %s", ((L3_FlyingService) flyingService).getStabilityModeActive() ? "Active" : "Inactive"));
+		} else if (flyingService instanceof IL2_FlyingService) {
+			System.out.println("|     Navigation Mode: L2 - Partial Automation");
+			System.out.println(String.format("|     Autopilot status: %s", ((L2_FlyingService) flyingService).getStabilityModeActive() ? "Active" : "Inactive"));
+		
+		} else if (flyingService instanceof IL1_BasicNavigationAssistance) {
+			System.out.println("|     Navigation Mode: L1 - Basic Navigation Assistance");
+			System.out.println(String.format("|     Autopilot status: %s", ((L1_FlyingService) flyingService).getStabilityModeActive() ? "Active" : "Inactive"));
+		} else {
+			System.out.println("|     Navigation Mode: Unknown");
+		}
+
 
 		if ( aoaSensor != null ) {
 			System.out.println("|                  AOA INFO");
@@ -110,9 +143,9 @@ public class MyCommandProvider {
 		if (fadec != null && speedSensor != null) {
 			System.out.println("|                  Speed INFO");
 			System.out.println(" - - - - - - - - - - - - - - - - - - - - - - - -\n");
-			System.out.println(String.format("|     Speed (GS): %s m/s", speedSensor.getSpeedGS()));
 			System.out.println(String.format("|     Speed (TAS): %s m/s", speedSensor.getSpeedTAS()));
 			System.out.println(String.format("|     Thrust: %s %%", fadec.getCurrentThrust()));
+			System.out.println(String.format("|     Engine Status: %s", fadec.isFailure() ? "Failure" : "Normal"));
 			System.out.println(String.format("|     Acceleration(TAS): %s m/s²", speedSensor.getSpeedIncreaseTAS()));
 			System.out.println(" - - - - - - - - - - - - - - - - - - - - - - - -\n");
 
@@ -121,9 +154,10 @@ public class MyCommandProvider {
 		if(fuelSensor != null && egtSensor != null) {
 			System.out.println("|                  Engine INFO");
 			System.out.println(" - - - - - - - - - - - - - - - - - - - - - - - -\n");
+			
 			System.out.println(String.format("|     Fuel Level: %s kg", fuelSensor.getFuelLevel()));
 			System.out.println(String.format("|     Fuel Level: %s %%", fuelSensor.getFuelPercentage()));
-			System.out.println(String.format("|     Fuel Consumption Rate: %s kg", fuelSensor.getFuelConsumptionRate()));
+			System.out.println(String.format("|     Fuel Consumption Rate: %s kg/s", fuelSensor.getFuelConsumptionRate()));
 				System.out.println(String.format("|     Estimated Endurance: %s s", fuelSensor.getEstimatedEnduranceSeconds()));
 			if(speedSensor != null) {
 				System.out.println(String.format("|     Estimated Range: %s m", fuelSensor.getEstimatedRangeMeters(speedSensor.getSpeedTAS())));
@@ -160,7 +194,6 @@ public class MyCommandProvider {
 			System.out.println("|                  WEATHER INFO");
 			System.out.println(" - - - - - - - - - - - - - - - - - - - - - - - -\n");
 			System.out.println(String.format("|     Weather Status: %s", weatherSensor.getActualClimate()));
-			System.out.println(String.format("|     Wind Speed: %s m/s", weatherSensor.getWindSpeed()));	
 			System.out.println(String.format("|     Temperature: %s °C", weatherSensor.getTemperature()));
 			System.out.println(String.format("|     Ground Temperature: %s °C", weatherSensor.getGroundTemperature()));
 			System.out.println(String.format("|     Air Density: %s kg/m³", weatherSensor.getAirDensity()));
@@ -174,82 +207,58 @@ public class MyCommandProvider {
 	
 	@SuppressWarnings("unchecked")
 	public void knowledge() {
-			/*
-			IKnowledgeProperty kp_myProp = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("my-prop");
-			
-			String myProp = "UNKNOWN";
-			if ( kp_myProp != null && kp_myProp.getValue() != null )
-				myProp = kp_myProp.getValue().toString();
-					
-			System.out.println("* * * * * * * * * * * * * * * * * * * * * * * *");
-			System.out.println("*  KNOWLEDGE");
-			System.out.println("* * * * * * * * * * * * * * * * * * * * * * * *");
-			System.out.println(String.format("*   my-prop: %s", myProp));
-			// ...
-			System.out.println("* * * * * * * * * * * * * * * * * * * * * * * *");*/
+	    IKnowledgeProperty kp_aoaValue = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("aoa_value");
+	    IKnowledgeProperty kp_autonomusType = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("autonomus_type");
+	    IKnowledgeProperty kp_componentStatus = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("component_status");
+	    IKnowledgeProperty kp_fallbackPlan = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("fallback_plan_type");
+	    IKnowledgeProperty kp_thermalStatus = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("thermal_status");
+	    IKnowledgeProperty kp_humidityLevel = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("humidity_level");
+	    IKnowledgeProperty kp_fuel_distance = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("fuel_distance");
+	    IKnowledgeProperty kp_distanceRemaining = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("distance_remaining");
+	    IKnowledgeProperty kp_weatherStatus = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("weather_status");
+	    IKnowledgeProperty kp_terrainAltitude = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("terrain_altitude");
+	    IKnowledgeProperty kp_flyingStage = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("flying_stage");
+	    IKnowledgeProperty kp_verticalSpeed = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("vertical_speed");
+	    IKnowledgeProperty kp_fuelStatus = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("fuel_status");
+	    IKnowledgeProperty kp_engineFailureStatus = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("engine_failure_status");
+	    
+	    String aoaValue = (kp_aoaValue != null && kp_aoaValue.getValue() != null) ? kp_aoaValue.getValue().toString() : "UNKNOWN";
+	    String autonomusType = (kp_autonomusType != null && kp_autonomusType.getValue() != null) ? kp_autonomusType.getValue().toString() : "UNKNOWN";
+	    String fallbackPlanType = (kp_fallbackPlan != null && kp_fallbackPlan.getValue() != null) ? kp_fallbackPlan.getValue().toString() : "UNKNOWN";
+	    String thermalStatus = (kp_thermalStatus != null && kp_thermalStatus.getValue() != null) ? kp_thermalStatus.getValue().toString() : "UNKNOWN";
+	    String humidityLevel = (kp_humidityLevel != null && kp_humidityLevel.getValue() != null) ? kp_humidityLevel.getValue().toString() : "UNKNOWN";
+	    String fuelDistance = (kp_fuel_distance != null && kp_fuel_distance.getValue() != null) ? kp_fuel_distance.getValue().toString() : "UNKNOWN";
+	    String distanceRemaining = (kp_distanceRemaining != null && kp_distanceRemaining.getValue() != null) ? kp_distanceRemaining.getValue().toString() : "UNKNOWN";
+	    String weatherStatus = (kp_weatherStatus != null && kp_weatherStatus.getValue() != null) ? kp_weatherStatus.getValue().toString() : "UNKNOWN";
+	    String terrainAltitude = (kp_terrainAltitude != null && kp_terrainAltitude.getValue() != null) ? kp_terrainAltitude.getValue().toString() : "UNKNOWN";
+	    String flyingStage = (kp_flyingStage != null && kp_flyingStage.getValue() != null) ? kp_flyingStage.getValue().toString() : "UNKNOWN";
+	    String verticalSpeed = (kp_verticalSpeed != null && kp_verticalSpeed.getValue() != null) ? kp_verticalSpeed.getValue().toString() : "UNKNOWN";
+	    Set<String> componentStatusList = (kp_componentStatus != null && kp_componentStatus.getValue() != null) ? (Set<String>) kp_componentStatus.getValue() : new java.util.HashSet<>();
+	    String fuel_status = (kp_fuelStatus != null && kp_fuelStatus.getValue() != null) ? kp_fuelStatus.getValue().toString() : "UNKNOWN";
+	    String engineFailureStatus = (kp_engineFailureStatus != null && kp_engineFailureStatus.getValue() != null) ? ((boolean) kp_engineFailureStatus.getValue() ? "FAILURE" : "NORMAL") : "UNKNOWN";
+	    int componentStatusCount = componentStatusList.size();
 
-		    // Obtener las propiedades de conocimiento
-		    /*IKnowledgeProperty kp_roadType = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("road_type");
-		    IKnowledgeProperty kp_autonomusType = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("autonomus_type");
-		    IKnowledgeProperty kp_roadStatus = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("road_status");
-		    IKnowledgeProperty kp_componentStatus = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("component_status");
-		    IKnowledgeProperty kp_driverStatus = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("face_status");
-		    IKnowledgeProperty kp_handsOnWheel = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("hands_on_wheel");
-		    IKnowledgeProperty kp_seatedOnPilot = BasicMAPEKLiteLoopHelper.getKnowledgeProperty("seated_on_pilot");
-		    
-		    // Inicializar variables para almacenar los valores
-		    String roadType = "UNKNOWN";
-		    String autonomusType = "UNKNOWN";
-		    String roadStatus = "UNKNOWN";
-		    String driverStatus = "UNKNOWN";
-		    Boolean handsOnWheel = false;
-		    Boolean seatedOnPilot = false;
-		    int componentStatus = 0;
+	    System.out.println("* * * * * * * * * * * * * * * * * * * * * * * *");
+	    System.out.println("*  KNOWLEDGE");
+	    System.out.println("* * * * * * * * * * * * * * * * * * * * * * * *");
+	    System.out.println(String.format("*   aoa_value: %s", aoaValue));
+	    System.out.println(String.format("*   autonomus_type: %s", autonomusType));
+	    System.out.println(String.format("*   fallback_plan_type: %s", fallbackPlanType));
+	    System.out.println(String.format("*   thermal_status: %s", thermalStatus));
+	    System.out.println(String.format("*   humidity_level: %s", humidityLevel));
+	    System.out.println(String.format("*   (remaining distance) fuel_distance: %s", fuelDistance));
+	    System.out.println(String.format("*   fuel_status: %s", fuel_status));
+	    System.out.println(String.format("*   distance_remaining: %s", distanceRemaining));
+	    System.out.println(String.format("*   weather_status: %s", weatherStatus));
+	    System.out.println(String.format("*   terrain_altitude: %s", terrainAltitude));
+	    System.out.println(String.format("*   flying_stage: %s", flyingStage));
+	    System.out.println(String.format("*   vertical_speed: %s", verticalSpeed));
+	    System.out.println(String.format("*   component_status: %s", componentStatusList));
+	    System.out.println(String.format("*   engine_status: %s", engineFailureStatus));
+	    System.out.println(String.format("*   component_status_count: %d", componentStatusCount));
+	    System.out.println("* * * * * * * * * * * * * * * * * * * * * * * *");
+	}
 
-		    // Obtener los valores de las propiedades, si están disponibles
-		    if (kp_roadType != null && kp_roadType.getValue() != null) {
-		        roadType = kp_roadType.getValue().toString();
-		    }
-		    
-		    if (kp_driverStatus != null && kp_driverStatus.getValue() != null) {
-		        driverStatus = kp_driverStatus.getValue().toString();
-		    }
-
-		    if (kp_seatedOnPilot != null && kp_seatedOnPilot.getValue() != null) {
-		    	seatedOnPilot = (Boolean) kp_seatedOnPilot.getValue();
-		    }
-		    if (kp_handsOnWheel != null && kp_handsOnWheel.getValue() != null) {
-		        handsOnWheel = (Boolean) kp_handsOnWheel.getValue();
-		    }
-		    
-		    if (kp_autonomusType != null && kp_autonomusType.getValue() != null) {
-		        autonomusType = kp_autonomusType.getValue().toString();
-		    }
-		    if (kp_roadStatus != null && kp_roadStatus.getValue() != null) {
-		        roadStatus = kp_roadStatus.getValue().toString();
-		    }
-		    if (kp_componentStatus != null && kp_componentStatus.getValue() != null) {
-		        Set<String> componentStatusList = ((Set<String>) kp_componentStatus.getValue());
-		        componentStatus = componentStatusList.size();
-		    }
-	        Set<String> componentStatusList = ((Set<String>) kp_componentStatus.getValue());
-
-		    // Imprimir los valores de las propiedades de conocimiento
-		    System.out.println("* * * * * * * * * * * * * * * * * * * * * * * *");
-		    System.out.println("*  KNOWLEDGE");
-		    System.out.println("* * * * * * * * * * * * * * * * * * * * * * * *");
-		    System.out.println(String.format("*   road_type: %s", roadType));
-		    System.out.println(String.format("*   autonomus_type: %s", autonomusType));
-		    System.out.println(String.format("*   road_status: %s", roadStatus));
-		    System.out.println(String.format("*   component_status: %s", componentStatusList));
-		    System.out.println(String.format("*   component_status_count: %s", componentStatus));
-		    System.out.println(String.format("*   Driver's Face: %s", driverStatus));
-		    System.out.println(String.format("*   HandsOnWheel: %s", handsOnWheel));
-		    System.out.println(String.format("*   SeatedOnPilot: %s", seatedOnPilot));
-
-		    System.out.println("* * * * * * * * * * * * * * * * * * * * * * * *");*/
-		}
-	
 	
 	public void initialize() {
 		String sondaFilter = String.format("(%s=%s)", IIdentifiable.ID,  SelfConfigureProbe.ID);
@@ -285,57 +294,66 @@ public class MyCommandProvider {
 		
 	}
 	
-	public void controlSurface(String property, String surface, double value) {
-		IControlSurfaces controlSurfaces = OSGiUtils.getService(context, IControlSurfaces.class);
-		if (controlSurfaces == null) {
-			System.out.println("Control Surfaces not available.");
-			return;
-		}
-		
-		switch (surface.toLowerCase()) {
-			case "aileron":
-				if (property.equalsIgnoreCase("set")) {
-					controlSurfaces.setAileronDeflection(value);
-					System.out.println("Aileron set to: " + value);
-				} else if (property.equalsIgnoreCase("get")) {
-					System.out.println("Current Aileron deflection: " + controlSurfaces.getAileronDeflection());
-				} else {
-					System.out.println("Unknown property for Aileron: " + property);
-				}
-				break;
-			case "elevator":
-				if (property.equalsIgnoreCase("set")) {
-					controlSurfaces.setElevatorDeflection(value);
-					System.out.println("Elevator set to: " + value);
-				} else if (property.equalsIgnoreCase("get")) {
-					System.out.println("Current Elevator deflection: " + controlSurfaces.getElevatorDeflection());
-				} else {
-					System.out.println("Unknown property for Elevator: " + property);
-				}
-				break;
-			case "rudder":
-				if (property.equalsIgnoreCase("set")) {
-					controlSurfaces.setRudderDeflection(value);
-					System.out.println("Rudder set to: " + value);
-				} else if (property.equalsIgnoreCase("get")) {
-					System.out.println("Current Rudder deflection: " + controlSurfaces.getRudderDeflection());
-				} else {
-					System.out.println("Unknown property for Rudder: " + property);
-				}
-				break;
-			case "airbrake":
-				if (property.equalsIgnoreCase("set")) {
-					controlSurfaces.setAirbrakeDeployment(value/100);
-					System.out.println("Airbreak set to: " + value);
-				} else if (property.equalsIgnoreCase("get")) {
-					System.out.println("Current Rudder deflection: " + controlSurfaces.getRudderDeflection());
-				} else {
-					System.out.println("Unknown property for Rudder: " + property);
-				}
-				break;
-			default:
-				System.out.println("Unknown control surface: " + surface);
-		}
+	public void controlSurface(String surface, double value) {
+	    IControlSurfaces controlSurfaces = OSGiUtils.getService(context, IControlSurfaces.class);
+	    if (controlSurfaces == null) {
+	        System.out.println("Control Surfaces not available.");
+	        return;
+	    }
+
+	    switch (surface.toLowerCase()) {
+	        case "aileron":
+	            if (value > ControlSurfaces.MAX_AILERON_DEFLECTION) {
+	                System.out.println("Aileron deflection too high (" + value + "), limiting to max " + ControlSurfaces.MAX_AILERON_DEFLECTION);
+	                value = ControlSurfaces.MAX_AILERON_DEFLECTION;
+	            } else if (value < -ControlSurfaces.MAX_AILERON_DEFLECTION) {
+	                System.out.println("Aileron deflection too low (" + value + "), limiting to min " + (-ControlSurfaces.MAX_AILERON_DEFLECTION));
+	                value = -ControlSurfaces.MAX_AILERON_DEFLECTION;
+	            }
+	            controlSurfaces.setAileronDeflection(value);
+	            System.out.println("Aileron set to: " + value);
+	            break;
+
+	        case "elevator":
+	            if (value > ControlSurfaces.MAX_ELEVATOR_DEFLECTION) {
+	                System.out.println("Elevator deflection too high (" + value + "), limiting to max " + ControlSurfaces.MAX_ELEVATOR_DEFLECTION);
+	                value = ControlSurfaces.MAX_ELEVATOR_DEFLECTION;
+	            } else if (value < -ControlSurfaces.MAX_ELEVATOR_DEFLECTION) {
+	                System.out.println("Elevator deflection too low (" + value + "), limiting to min " + (-ControlSurfaces.MAX_ELEVATOR_DEFLECTION));
+	                value = -ControlSurfaces.MAX_ELEVATOR_DEFLECTION;
+	            }
+	            controlSurfaces.setElevatorDeflection(value);
+	            System.out.println("Elevator set to: " + value);
+	            break;
+
+	        case "rudder":
+	            if (value > ControlSurfaces.MAX_RUDDER_DEFLECTION) {
+	                System.out.println("Rudder deflection too high (" + value + "), limiting to max " + ControlSurfaces.MAX_RUDDER_DEFLECTION);
+	                value = ControlSurfaces.MAX_RUDDER_DEFLECTION;
+	            } else if (value < -ControlSurfaces.MAX_RUDDER_DEFLECTION) {
+	                System.out.println("Rudder deflection too low (" + value + "), limiting to min " + (-ControlSurfaces.MAX_RUDDER_DEFLECTION));
+	                value = -ControlSurfaces.MAX_RUDDER_DEFLECTION;
+	            }
+	            controlSurfaces.setRudderDeflection(value);
+	            System.out.println("Rudder set to: " + value);
+	            break;
+
+	        case "airbrake":
+	            double deployment = value / 100.0; // convertir porcentaje a 0.0 - 1.0
+	            if (deployment > ControlSurfaces.MAX_AIRBRAKE_DEPLOYMENT) {
+	                System.out.println("Airbrake deployment too high (" + deployment + "), limiting to max " + ControlSurfaces.MAX_AIRBRAKE_DEPLOYMENT);
+	                deployment = ControlSurfaces.MAX_AIRBRAKE_DEPLOYMENT;
+	            } else if (deployment < 0.0) {
+	                System.out.println("Airbrake deployment too low (" + deployment + "), limiting to min 0.0");
+	                deployment = 0.0;
+	            }
+	            controlSurfaces.setAirbrakeDeployment(deployment);
+	            System.out.println("Airbrake set to: " + (deployment * 100) + "%");
+	            break;
+
+	        default:
+	            System.out.println("Unknown control surface: " + surface);
+	    }
 	}
 	public void thrust(String property, int value ) {
 		
@@ -365,30 +383,10 @@ public class MyCommandProvider {
 		
 	}
 	
-	public void speed(String property, double value) {
-		ISpeedSensor speedSensor = OSGiUtils.getService(context, ISpeedSensor.class);
-		IFADEC fadec = OSGiUtils.getService(context, IFADEC.class);
-		if (speedSensor == null && fadec == null) {
-			System.out.println("Speed Sensor or FADEC not available.");
-			return;
-		}
-		
-		if (property.equalsIgnoreCase("set")) {
-			try {
-				double speedValue = value; // Assuming value is already a double
-				System.out.println("Speed set to: " + speedValue);
-			} catch (NumberFormatException e) {
-				System.out.println("Invalid speed value: " + value);
-			}
-		} else if (property.equalsIgnoreCase("get")) {
-		} else {
-			System.out.println("Unknown property: " + property);
-		}
-		
-	}
+	
 	public void timeStep(double value) {
 		
-		if (value < 0.1 && value > 10) {
+		if (value < 0.1 || value > 10) {
 			System.out.println("Time step value must be between 0.1 and 10 seconds.");
 			return;
 		}
@@ -407,11 +405,17 @@ public class MyCommandProvider {
 		}
 			try {
 				double groundaltitudeValue = value; // Assuming value is already a double
-				if(groundaltitudeValue < 0 || groundaltitudeValue > RadioAltimeterSensor.MAX_REALGROUND_ALTITUDE) {
+				if(groundaltitudeValue < 0 || groundaltitudeValue > RadioAltimeterSensor.MAX_REALGROUND_ALTITUDE ) {
 					System.out.println("Altitude value must be between 0 and " + RadioAltimeterSensor.MAX_REALGROUND_ALTITUDE);
 					return;
+
 				}
-				if(altitudeSensor.getAltitude() < groundaltitudeValue && gnss.getCurrentFlyghtStage() != EFlyingStages.TAKEOFF) {
+					
+				if(gnss.getCurrentFlyghtStage() == EFlyingStages.DESCENT || gnss.getCurrentFlyghtStage() == EFlyingStages.LANDING) {
+					System.out.println("Terrain Altitude Cant be set on Landing or Descent stages " + RadioAltimeterSensor.MAX_REALGROUND_ALTITUDE);
+					return;
+				}
+				if(altitudeSensor.getAltitude() < groundaltitudeValue && !(gnss.getCurrentDistance() == 0)) {
 					System.out.println("Altitude value must be less than the current altitude: " + altitudeSensor.getAltitude());
 					return;
 				}
@@ -427,72 +431,48 @@ public class MyCommandProvider {
 			}
 		
 	}
-	public void ascend(String value) {
-		 	double thurst;
-		    double elevatorDeflection;
-
-		    IFADEC thrustSensor = OSGiUtils.getService(context, IFADEC.class);
-		    ISpeedSensor speedSensor = OSGiUtils.getService(context, ISpeedSensor.class);
-		    IAttitudeSensor AHRSS = OSGiUtils.getService(context, IAttitudeSensor.class);
-		    IControlSurfaces controlSurfaces = OSGiUtils.getService(context, IControlSurfaces.class);
-		    if (thrustSensor == null || speedSensor == null || AHRSS == null || controlSurfaces == null) {
-		        System.out.println("Sensors or control surfaces not available.");
-		        return;
-		    }
-
-		    switch (value.toLowerCase()) {
-		        case "slow":
-		        	thurst = 50;
-		            elevatorDeflection = -5.0; // Small negative deflection for gentle descent
-		            break;
-		        case "middle":
-		        	thurst = 60;
-		            elevatorDeflection = -10.0; // Moderate negative deflection
-		            break;
-		        case "fast":
-		        	thurst = 90;
-		            elevatorDeflection = -5; // Larger negative deflection for steep descent
-		            break;
-		        default:
-		            throw new IllegalArgumentException("Tipo de descenso no reconocido: " + value);
-		    }
-		  
-		    thrustSensor.setTHRUSTPercentage(thurst);
-		    controlSurfaces.setElevatorDeflection(elevatorDeflection); // Use control surface
-		}
-	
-	public void descend(String value) {
-	    double thurst;
-	    double elevatorDeflection;
-
-	    IFADEC thrustSensor = OSGiUtils.getService(context, IFADEC.class);
-	    ISpeedSensor speedSensor = OSGiUtils.getService(context, ISpeedSensor.class);
-	    IAttitudeSensor AHRSS = OSGiUtils.getService(context, IAttitudeSensor.class);
-	    IControlSurfaces controlSurfaces = OSGiUtils.getService(context, IControlSurfaces.class);
-	    if (thrustSensor == null || speedSensor == null || AHRSS == null || controlSurfaces == null) {
-	        System.out.println("Sensors or control surfaces not available.");
+	public void setEngineFailure(boolean value) {
+	    IFADEC fadec = OSGiUtils.getService(context, IFADEC.class);
+	    if (fadec == null) {
+	        System.out.println("FADEC not available.");
 	        return;
 	    }
 
-	    switch (value.toLowerCase()) {
-	        case "slow":
-	        	thurst = 50;
-	            elevatorDeflection = 5.0; // Small negative deflection for gentle descent
-	            break;
-	        case "middle":
-	        	thurst = 60;
-	            elevatorDeflection = 10.0; // Moderate negative deflection
-	            break;
-	        case "fast":
-	        	thurst = 70;
-	            elevatorDeflection = 15.0; // Larger negative deflection for steep descent
-	            break;
-	        default:
-	            throw new IllegalArgumentException("Tipo de descenso no reconocido: " + value);
+	    boolean currentFailureState = fadec.isFailure();
+
+	    if (currentFailureState == value) {
+	        System.out.println(value 
+	            ? "Engine is already in failure state." 
+	            : "Engine is already in normal state.");
+	        return;
 	    }
 
-	    thrustSensor.setTHRUSTPercentage(thurst);
-	    controlSurfaces.setElevatorDeflection(elevatorDeflection); // Use control surface
+	    if (!value && currentFailureState) {
+	        System.out.println("Cannot revert engine to normal state once it has failed.");
+	        return;
+	    }
+
+	    fadec.setFailure(value);
+	    System.out.println("Engine state set to: " + (value ? "Failure" : "Normal"));
+	}
+	public void changeFlyingAssistance(boolean value) {
+		IFlyingService flyingService = OSGiUtils.getService(context, IFlyingService.class);
+		if(flyingService == null) {
+			System.out.println("Flying Service not available.");
+			return;
+		}
+		if(flyingService instanceof IL0_ManualNavigation) {
+			System.out.println("Flying Service is already in manual navigation.");
+		} else if(flyingService instanceof IL1_FlyingService) {
+			((IL1_FlyingService) flyingService).setStabilityModeActive(value);
+			
+		} else if(flyingService instanceof IL2_FlyingService) {
+			((IL2_FlyingService) flyingService).setStabilityModeActive(value);
+		} else if(flyingService instanceof IL3_FlyingService) {
+			((IL3_FlyingService) flyingService).setStabilityModeActive(value);
+		}
+		System.out.println("Flying Assistance changed to: " + (value ? "ON" : "OFF"));
+		
 	}
 	public void flyingStage(String stage) {
 		INavigationSystem gnss = OSGiUtils.getService(context, INavigationSystem.class);
@@ -563,7 +543,7 @@ public class MyCommandProvider {
 		}
 	}
 	
-	public void wind(String property, double value) {
+	/*public void wind(String property, double value) {
 		IWeatherSensor weatherSensor = OSGiUtils.getService(context, IWeatherSensor.class);
 		if (weatherSensor == null) {
 			System.out.println("Weather Sensor not available.");
@@ -585,7 +565,7 @@ public class MyCommandProvider {
 			System.out.println("Unknown property: " + property);
 		}
 		
-	}
+	}*/
 	public void groundTemperature(String property, double value) {
 		IWeatherSensor weatherSensor = OSGiUtils.getService(context, IWeatherSensor.class);
 		IAltitudeSensor altitudeSensor = OSGiUtils.getService(context, IAltitudeSensor.class);
@@ -752,144 +732,6 @@ public class MyCommandProvider {
 	}
 
 
-	
-	/*public void driver(String property, String s) {
-		IHumanSensors sensor = OSGiUtils.getService(context, IHumanSensors.class);
-		if ( sensor == null )
-			return;
-		if ( property.equalsIgnoreCase("face") ) {
-			if ( s.equalsIgnoreCase("looking-forward") || s.equalsIgnoreCase("l") ) {
-				sensor.setFaceStatus(EFaceStatus.LOOKING_FORWARD);
-			}
-			else if ( s.equalsIgnoreCase("distracted") || s.equalsIgnoreCase("d") ) {
-				sensor.setFaceStatus(EFaceStatus.DISTRACTED);
-			}
-			else if ( s.equalsIgnoreCase("sleeping") || s.equalsIgnoreCase("s") ) {
-				sensor.setFaceStatus(EFaceStatus.SLEEPING);
-			}
-		} else if ( property.equalsIgnoreCase("hands") ) {
-			if ( s.equalsIgnoreCase("on-wheel") ) {
-				sensor.setTheHandsOnTheSteeringWheel(true);
-			} else if ( s.equalsIgnoreCase("off-wheel") ) {
-				sensor.setTheHandsOnTheSteeringWheel(false);
-			}
-		}
-		System.out.println("Driver property: " + property + " value: " + sensor.getFaceStatus().toString());
-
-	}
-		
-	public void road(String property, String s) {
-		IRoadSensor rs = OSGiUtils.getService(context, IRoadSensor.class);
-		if ( rs == null )
-			return;
-		if ( property.equalsIgnoreCase("type") ) {
-			if ( s.equalsIgnoreCase("std") || s.equalsIgnoreCase("s") )
-				rs.setRoadType(ERoadType.STD_ROAD);
-			else if ( s.equalsIgnoreCase("city") || s.equalsIgnoreCase("c") )
-				rs.setRoadType(ERoadType.CITY);
-			else if ( s.equalsIgnoreCase("highway") || s.equalsIgnoreCase("h") )
-				rs.setRoadType(ERoadType.HIGHWAY);
-			else if ( s.equalsIgnoreCase("off-road") || s.equalsIgnoreCase("o") )
-				rs.setRoadType(ERoadType.OFF_ROAD);
-			
-		} else if ( property.equalsIgnoreCase("status") ) {
-			if ( s.equalsIgnoreCase("fluid") || s.equalsIgnoreCase("f") ) {
-				rs.setRoadStatus(ERoadStatus.FLUID);
-			} else if ( s.equalsIgnoreCase("jam") || s.equalsIgnoreCase("j") ) {
-				rs.setRoadStatus(ERoadStatus.JAM);
-			} else if ( s.equalsIgnoreCase("collapsed") || s.equalsIgnoreCase("c") ) {
-				rs.setRoadStatus(ERoadStatus.COLLAPSED);
-			}
-		}
-	}
-
-	public void seat(String s, boolean value) {
-		IHumanSensors sensor = OSGiUtils.getService(context, IHumanSensors.class);
-		if ( sensor == null )
-			return;
-		if ( s.equalsIgnoreCase("driver") )
-			sensor.setDriverSeatOccupancy(value);
-		else if ( s.equalsIgnoreCase("copilot") )
-			sensor.setCopilotSeatOccupancy(value);
-	}
-	
-	public void driving(String function) {
-		
-		System.out.println("Function disabled in this Adaptive version!");
-		return;
-		
-		
-	}
-
-	public void engine(String s, int rpm) {
-		IEngine engine = OSGiUtils.getService(context, IEngine.class);
-		if ( engine == null )
-			return;
-		if ( s.equalsIgnoreCase("rpm") )
-			engine.setRPM(rpm);
-		else if ( s.equalsIgnoreCase("accelerate") )
-			engine.accelerate(rpm);
-		else if ( s.equalsIgnoreCase("decelerate") )
-			engine.decelerate(rpm);
-	}
-
-	public void steering(String s, int angle) {
-		ISteering steering = OSGiUtils.getService(context, ISteering.class);
-		if ( steering == null )
-			return;
-		else if ( s.equalsIgnoreCase("right") )
-			steering.rotateRight(angle);
-		else if ( s.equalsIgnoreCase("left") )
-			steering.rotateLeft(angle);
-	}
-	
-	public void line(String line, boolean value) {
-		// line = Left or Right (case insensitive)
-		String sensorId = null;
-		if ( line.equalsIgnoreCase("left") )
-			sensorId = "LeftLineSensor";
-		else if ( line.equalsIgnoreCase("right") )
-			sensorId = "RightLineSensor";
-		
-		ILineSensor sensor = OSGiUtils.getService(context, ILineSensor.class, String.format("(id=%s)", sensorId));
-		if ( sensor != null )
-			sensor.setLineDetected(value);
-	}
-	
-	public void distance(String l, int distance) {
-		// l = Front | Rear | Left | Right (case insensitive)
-		String sensorId = null;
-		if ( l.equalsIgnoreCase("front") )
-			sensorId = "FrontDistanceSensor";
-		else if ( l.equalsIgnoreCase("rear") )
-			sensorId = "RearDistanceSensor";
-		else if ( l.equalsIgnoreCase("right") )
-			sensorId = "RightDistanceSensor";
-		else if ( l.equalsIgnoreCase("left") )
-			sensorId = "LeftDistanceSensor";
-
-		IDistanceSensor sensor = OSGiUtils.getService(context, IDistanceSensor.class, String.format("(id=%s)", sensorId));
-		if ( sensor != null )
-			sensor.setDistance(distance);
-	}
-
-	public void lidar(String l, int distance) {
-		// l = Front | Rear | Left | Right (case insensitive)
-		String sensorId = null;
-		if ( l.equalsIgnoreCase("front") )
-			sensorId = "LIDAR-FrontDistanceSensor";
-		else if ( l.equalsIgnoreCase("rear") )
-			sensorId = "LIDAR-RearDistanceSensor";
-		else if ( l.equalsIgnoreCase("right") )
-			sensorId = "LIDAR-RightDistanceSensor";
-		else if ( l.equalsIgnoreCase("left") )
-			sensorId = "LIDAR-LeftDistanceSensor";
-
-		IDistanceSensor sensor = OSGiUtils.getService(context, IDistanceSensor.class, String.format("(id=%s)", sensorId));
-		if ( sensor != null )
-			sensor.setDistance(distance);
-	}*/
-	
 	public void next() {
 		IManualSimulatorStepsManager manager = OSGiUtils.getService(context, IManualSimulatorStepsManager.class);
 		if ( manager != null )

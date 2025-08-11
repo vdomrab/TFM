@@ -10,7 +10,7 @@ public class StallWarning extends InteractionMechanism {
 
 	@Override
 	public StallWarning performTheInteraction(String message) {
-		System.out.println("¨Stall Warning- " + message);
+		this.showMessage("🛑 " + message);
 		return this;
 	}
 

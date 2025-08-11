@@ -4,9 +4,24 @@ import org.osgi.framework.BundleContext;
 
 import autonomousplane.autopilot.interfaces.IFlyingService;
 import autonomousplane.autopilot.interfaces.IL2_PartialAutomation;
+import autonomousplane.autopilot.interfaces.IStallRecoveryFallbackPlan;
+import autonomousplane.devices.interfaces.IAOASensor;
+import autonomousplane.devices.interfaces.IAltitudeSensor;
+import autonomousplane.devices.interfaces.IAttitudeSensor;
+import autonomousplane.devices.interfaces.IControlSurfaces;
+import autonomousplane.devices.interfaces.IEGTSensor;
+import autonomousplane.devices.interfaces.IFADEC;
+import autonomousplane.devices.interfaces.IFuelSensor;
+import autonomousplane.devices.interfaces.ILandingSystem;
+import autonomousplane.devices.interfaces.INavigationSystem;
+import autonomousplane.devices.interfaces.IProximitySensor;
+import autonomousplane.devices.interfaces.IRadioAltimeterSensor;
+import autonomousplane.devices.interfaces.ISpeedSensor;
+import autonomousplane.devices.interfaces.IWeatherSensor;
 import autonomousplane.infraestructure.autopilot.L2_FlyingService;
 import autonomousplane.infraestructure.devices.SpeedSensor;
 import autonomousplane.infraestructure.devices.WeatherSensor;
+import autonomousplane.interaction.interfaces.INotificationService;
 import autonomousplane.interfaces.EFlyingStages;
 import autonomousplane.simulation.simulator.IPlaneSimulation;
 import autonomousplane.simulation.simulator.PlaneSimulationElement;
@@ -25,40 +40,48 @@ public class L2_PartialAutomation extends L2_FlyingService implements IL2_Partia
 
 	@Override
 	public IFlyingService performTheFlyingFunction() {
-	    logger.info("Performing partial automation...");
-	    boolean correctionRequired = false;
+		if(checkServices()) {
+		    logger.info("Performing flying function in L2_PartialAutomation.");
 
-	    double pitch = this.AHRSSensor.getPitch();
-	    double roll = this.AHRSSensor.getRoll();
-
-	    if (this.getStabilityModeActive()) {
-	        correctionRequired |= correctRollIfNeeded(roll);
-
-	        EFlyingStages stage = this.navigationSystem.getCurrentFlyghtStage();
-	        switch (stage) {
-	            case CLIMB:
-	                correctionRequired |= handleClimbPhase(pitch);
-	                break;
-	            case DESCENT:
-	                correctionRequired |= handleDescentPhase(pitch);
-	                break;
-	            case CRUISE:
-	                adjustPitchThrustToMaintainAltitudeAndSpeedCruise();
-	                break;
-	            default:
-	                break; // Other phases ignored here
-	        }
-
-	        correctionRequired |= checkTerrainAwareness(stage, radioAltimeterSensor.getGroundDistance(), altimeterSensor.getVerticalSpeed());
-	        correctionRequired |= handleStallWarnings();
-
-	        if (!correctionRequired) {
-	            logger.info("Monitoring flying parameters. Nothing to warn ...");
-	        }
-	    }
-
-	    return this;
-	}
+		boolean correctionRequired = false;
+		double pitch = this.AHRSSensor.getPitch();
+		double roll = this.AHRSSensor.getRoll();
+		EFlyingStages stage = this.navigationSystem.getCurrentFlyghtStage();
+		
+		correctionRequired |= checkTerrainAwareness(stage, radioAltimeterSensor.getGroundDistance(), altimeterSensor.getVerticalSpeed());
+		correctionRequired |= handleStallWarnings();
+		
+		if (this.getStabilityModeActive()) {
+			    correctionRequired |= correctRollIfNeeded(roll);
+			
+			    switch (stage) {
+			        case CLIMB:
+			            correctionRequired |= handleClimbPhase(pitch);
+			            break;
+			        case DESCENT:
+			            manageDescentAndApproach();
+			            break;
+			        case CRUISE:
+			            adjustPitchThrustToMaintainAltitudeAndSpeedCruise();
+			            break;
+			        case TAKEOFF:
+			            break;
+			        case LANDING:
+			            break;
+			        default:
+			            break; // Other phases ignored here
+			    }
+			}
+		   
+		    if (!correctionRequired) {
+		        logger.info("Monitoring flying parameters. Nothing to warn ...");
+		    }
+		
+		} else {
+		    logger.error("Cannot perform flying function missing essential components.");
+		}
+		return this;
+		}	
 
 	private boolean correctRollIfNeeded(double roll) {
 	    final double SAFE_ROLL_MIN = -8.0;
@@ -94,10 +117,19 @@ public class L2_PartialAutomation extends L2_FlyingService implements IL2_Partia
 	    final double SAFE_PITCH_MIN = 7.0;
 	    final double SAFE_PITCH_MAX = 13.0;
 	    boolean correctionDone = correctPitchIfNeeded(pitch, SAFE_PITCH_MIN, SAFE_PITCH_MAX, "CLIMB");
+	    double realaltitude = altimeterSensor.getAltitude() - radioAltimeterSensor.getRealGroundAltitude();
+		if(realaltitude > 2000.0 && ( this.getFADEC().getCurrentThrust() <= 60 || this.getFADEC().getCurrentThrust() > 89.0) ) {
+	        this.getFADEC().setTHRUSTPercentage(75.0);
+	        logger.info("CLIMB: increasing thrust to 75%");
+	        correctionDone = true;
 
-	    if (this.getFADEC().getCurrentThrust() < 85.0) {
-	        this.getFADEC().setTHRUSTPercentage(85.0);
-	        logger.info("CLIMB: increasing thrust to 85%");
+    	}else if (realaltitude <= 2000){
+	    
+    		if (this.getFADEC().getCurrentThrust() < 90.0) {
+	    
+		        this.getFADEC().setTHRUSTPercentage(90.0);
+		        logger.info("CLIMB: increasing thrust to 90%");	
+	    	}
 	        correctionDone = true;
 	    }
 
@@ -110,24 +142,77 @@ public class L2_PartialAutomation extends L2_FlyingService implements IL2_Partia
 	    return correctionDone;
 	}
 
-	private boolean handleDescentPhase(double pitch) {
-	    final double SAFE_PITCH_MIN = -7.0;
-	    final double SAFE_PITCH_MAX = -2.0;
-	    boolean correctionDone = correctPitchIfNeeded(pitch, SAFE_PITCH_MIN, SAFE_PITCH_MAX, "DESCENT");
+
+	public void manageDescentAndApproach() {
+	    double altitude = altimeterSensor.getAltitude() - radioAltimeterSensor.getRealGroundAltitude();
+	    double pitch = this.getAHRSSensor().getPitch();
+	    double speed = this.getSpeedSensor().getSpeedGS();
+	    double correctionTime = PlaneSimulationElement.getTimeStep() * 2;
+	    double densityFactor = this.getAHRSSensor().calculateDensityFactor(weatherSensor);
+
+	    double totalDistance = this.getNavigationSystem().getTotalDistance();
+	    double currentDistance = this.getNavigationSystem().getCurrentDistance();
+	    double distanceToTarget = totalDistance - currentDistance;
+
+	    // Objetivos de altitud y velocidad según fase de aproximación
+	    //double targetAltitude = 2850.0;
+	    double targetSpeed = 90;
+	    // --- Control de Altitud ---
+	 
+        // Está demasiado alto → descender
+        double desiredPitch = -7; // forzar pitch negativo
+        double pitchError = desiredPitch - pitch;
+        double desiredPitchRate = pitchError / correctionTime;
+
+        double requiredDeflection = Math.abs(pitchError) < 0.1
+            ? 0.0
+            : desiredPitchRate / (0.6 * densityFactor);
+
+
+        requiredDeflection = clamp(requiredDeflection, 15.0, -15.0);
+        this.getControlSurfaces().setElevatorDeflection(requiredDeflection);
+
+	       
+
+	    // --- Control de Velocidad (suavizado) ---
+	    final double MAX_THRUST = 110.0;
+	    final double MIN_THRUST = 20.0;
 
 	    double currentThrust = this.getFADEC().getCurrentThrust();
-	    if (currentThrust < 20 || currentThrust > 30) {
-	        this.getFADEC().setTHRUSTPercentage(30.0);
-	        logger.info("DESCENT: correcting thrust to 30%");
+	    double pitchRad = Math.toRadians(pitch);
+	    double thrustEfficiency = 1.0 - Math.min(altitude / 15000.0, 0.3);
+	    double airDensity = this.getWeatherSensor().getAirDensity();
+	    double airBrakeLevel = this.getControlSurfaces().getAirbrakeDeployment();
+	    double effectiveCd = SpeedSensor.DRAG_COEFFICIENT + (SpeedSensor.AIR_BRAKE_DRAG_COEFFICIENT * airBrakeLevel);
+	    double dragForce = 0.5 * effectiveCd * airDensity * SpeedSensor.FRONTAL_AREA * speed * speed;
+
+	    double requiredThrust = (dragForce / Math.max(0.01, Math.cos(pitchRad))) / Math.max(0.01, thrustEfficiency);
+	    double thrustPercent = (requiredThrust / SpeedSensor.MAX_THRUST_FORCE) * 100.0;
+	    thrustPercent = clamp(thrustPercent, MAX_THRUST, MIN_THRUST);
+
+	    // Ajuste por error de velocidad
+	    double speedError = targetSpeed - speed;
+	    double thrustCorrection = thrustPercent + 1.2 * speedError;
+	    thrustCorrection = clamp(thrustCorrection, MAX_THRUST, MIN_THRUST);
+
+	    // Suavizado de cambios de empuje
+	    this.getFADEC().setTHRUSTPercentage(thrustCorrection);
+
+
+	    // --- Control de aerofrenos ---
+	    double targetAirbrake = 0.0;
+	    if (speed > targetSpeed + 3.0) {
+	        targetAirbrake = Math.min(0.3, 0.05 * (speed - targetSpeed));
 	    }
 
-	    double airbrake = this.getControlSurfaces().getAirbrakeDeployment();
-	    if (airbrake < 0.5 || airbrake > 0.75) {
-	        this.getControlSurfaces().setAirbrakeDeployment(0.5);
-	        logger.info("DESCENT: adjusting airbrakes for descent assistance.");
-	    }
+	    double currentAirbrake = this.getControlSurfaces().getAirbrakeDeployment();
+	    double maxAirbrakeChangePerSec = 0.1;
+	    double airbrakeDelta = clamp(targetAirbrake - currentAirbrake, maxAirbrakeChangePerSec * PlaneSimulationElement.getTimeStep(), -maxAirbrakeChangePerSec * PlaneSimulationElement.getTimeStep());
+	    double smoothedAirbrake = clamp(currentAirbrake + airbrakeDelta, 1.0, 0.0);
+	    this.getControlSurfaces().setAirbrakeDeployment(smoothedAirbrake);
 
-	    return correctionDone;
+	    // Logging final
+	   
 	}
 
 	private boolean correctPitchIfNeeded(double pitch, double safeMin, double safeMax, String phase) {
@@ -157,6 +242,7 @@ public class L2_PartialAutomation extends L2_FlyingService implements IL2_Partia
 	    return true;
 	}
 
+
 	private boolean handleStallWarnings() {
 	    double aoa = this.getAOASensor().getAOA();
 	    if (aoa > 12 && aoa < 15) {
@@ -164,8 +250,9 @@ public class L2_PartialAutomation extends L2_FlyingService implements IL2_Partia
 	        return true;
 	    } else if (aoa >= 15) {
 	        notifyStallCondition("is in stall condition", aoa);
-	        if (this.getFallbackPlan() != null) {
-	            this.activateTheFallbackPlan();
+        	if(this.getFallbackPlan() != null && this.getFallbackPlan() instanceof IStallRecoveryFallbackPlan) {
+            	 this.activateTheFallbackPlan(); // Activa el plan de contingencia
+	             
 	        } else {
 	            logger.error("No fallback plan available to handle stall condition.");
 	        }
@@ -174,10 +261,11 @@ public class L2_PartialAutomation extends L2_FlyingService implements IL2_Partia
 	    return false;
 	}
 
+
 	private void notifyStallCondition(String message, double aoa) {
 	    logger.info("Plane " + message);
 	    if (this.getNotificationService() != null && this.getNotificationService().isMechanismAvailable("StallWarning")) {
-	        this.getNotificationService().notify("Plane " + message + ": " + aoa);
+	        this.getNotificationService().notify("Plane " + message + ": " + aoa, "StallWarning");
 	    }
 	}
 
@@ -199,29 +287,34 @@ public class L2_PartialAutomation extends L2_FlyingService implements IL2_Partia
 		    // Ajustes según fase de vuelo
 		    switch (this.navigationSystem.getCurrentFlyghtStage()) {
 		    case EFlyingStages.CLIMB:
-		        minAGLThreshold = 600.0;    // margen amplio para evitar falsas alertas
-		        maxDescentRate = 0.0;       // no debería descender en climb
-		        timeToImpactThreshold = 12.0;
+		        minAGLThreshold = 1000.0;    // ≈ 3300 ft, margen alto para evitar CFIT en salida
+		        maxDescentRate = 0.0;        // no debería descender en climb
+		        timeToImpactThreshold = 25.0; // tiempo amplio para reacción (20–30 s)
 		        break;
 
 		    case EFlyingStages.DESCENT:
-		        minAGLThreshold = 500.0;    // umbral razonable para alerta en descenso
-		        maxDescentRate = -5.0;      // permite descenso moderado (≈ -1000 ft/min)
-		        timeToImpactThreshold = 18.0;
+		        minAGLThreshold = 1500.0;    // ≈ 5000 ft, inicio de alerta temprana
+		        maxDescentRate = -5.0;       // permite descenso moderado (≈ -1000 ft/min)
+		        timeToImpactThreshold = 30.0; // máximo margen para prevenir aproximación controlada al terreno
 		        break;
 
 		    case EFlyingStages.CRUISE:
-		        minAGLThreshold = 1000.0;   // mínimo AGL esperado en crucero
-		        maxDescentRate = -1.0;      // casi sin descenso permitido en crucero
-		        timeToImpactThreshold = 10.0;
+		        minAGLThreshold = 2000.0;    // ≈ 6600 ft, vuelo de crucero sobre terreno alto
+		        maxDescentRate = -1.0;       // casi sin descenso permitido en crucero
+		        timeToImpactThreshold = 30.0; // margen máximo, ya que hay tiempo para actuar
 		        break;
 
 		    case EFlyingStages.TAKEOFF:
-		        minAGLThreshold = 150.0;    // cercano al suelo en takeoff
-		        maxDescentRate = 0.0;       // no debería descender en takeoff
-		        timeToImpactThreshold = 10.0;
+		        minAGLThreshold = 300.0;     // ≈ 1000 ft, primer punto crítico tras rotación
+		        maxDescentRate = 0.0;        // no debería descender en takeoff
+		        timeToImpactThreshold = 20.0; // tiempo suficiente para reacción en baja altura
 		        break;
 
+		    case EFlyingStages.LANDING:
+		        minAGLThreshold = 100.0;     // ≈ 330 ft, justo antes de flare
+		        maxDescentRate = -5.0;       // Permitimos hasta -1000 ft/min
+		        timeToImpactThreshold = 20.0; // margen para corregir aproximación inestable
+		        break;
 		    default:
 		        // Para otras fases, mantenemos los valores por defecto
 		        break;
@@ -238,7 +331,7 @@ public class L2_PartialAutomation extends L2_FlyingService implements IL2_Partia
 		        				            
 		        	   if (this.getNotificationService() != null &&  this.getNotificationService().isMechanismAvailable("TAWS")) {
 				         
-			                this.getNotificationService().notify("⚠️ ALERTA TAWS: TERRAIN — PULL UP");
+			                this.getNotificationService().notify("⚠️ ALERTA TAWS: TERRAIN — PULL UP", "TAWS");
 			                
 			                return true; // Activamos alerta TAWS
 			            }
@@ -249,7 +342,7 @@ public class L2_PartialAutomation extends L2_FlyingService implements IL2_Partia
 		}
 	
 	public void adjustPitchThrustToMaintainAltitudeAndSpeedCruise() {
-      
+	      
 
 	    double altitude = altimeterSensor.getAltitude(); 
 	    double pitch = this.getAHRSSensor().getPitch();
@@ -257,9 +350,16 @@ public class L2_PartialAutomation extends L2_FlyingService implements IL2_Partia
 	    double speed = this.getSpeedSensor().getSpeedGS();
 	    double correctionTime = PlaneSimulationElement.getTimeStep()  * 2;
 	    double densityFactor = this.getAHRSSensor().calculateDensityFactor(weatherSensor);
-
+	    
+	    
 	    double SPEED_TARGET = 236.0; // 850 km/h ≈ 236 m/s
 	    double SPEED_TOLERANCE = 5.8; // 10 km/h ≈ 2.8 m/s
+	    
+	    if(altitude < 10000) {
+	    	 SPEED_TARGET = 250.0; // 900 km/h ≈ 250 m/s
+	 	     SPEED_TOLERANCE = 5.8; // 10 km/h ≈ 2.8 m/s
+	    }
+	   
 
 	    // Control de altitud (igual que antes)
 	    if (altitude >= 10000.0 && altitude <= 11000.0) {
@@ -339,33 +439,38 @@ public class L2_PartialAutomation extends L2_FlyingService implements IL2_Partia
 	        }
 	    }
 
-	    // Required thrust to keep acceleration = 0
+	    // Compute required thrust to maintain speed
 	    double thrustHorizontal = dragForce + groundForces;
 	    double thrustTotal = thrustHorizontal / Math.max(0.01, Math.cos(pitchRad));
 	    double requiredThrust = (thrustTotal / Math.max(0.01, thrustEfficiency)) / SpeedSensor.MAX_THRUST_FORCE * 100.0;
 	    requiredThrust = Math.max(MIN_THRUST, Math.min(MAX_THRUST, requiredThrust));
 
-	    // Correction logic
-	    if (speed >= SPEED_TARGET - SPEED_TOLERANCE && speed <= SPEED_TARGET + SPEED_TOLERANCE) {
-	        this.getFADEC().setTHRUSTPercentage(requiredThrust);
-	        this.getControlSurfaces().setAirbrakeDeployment(0.0);
-	    } else {
-	        double speedError = SPEED_TARGET - speed;
-	        double thrustCorrection = requiredThrust + 1.2 * speedError;
-	        thrustCorrection = Math.max(MIN_THRUST, Math.min(MAX_THRUST, thrustCorrection));
-	        this.getFADEC().setTHRUSTPercentage(thrustCorrection);
+	    // Speed error for adjustment
+	    double speedError = SPEED_TARGET - speed;
+	    double thrustCorrection = requiredThrust + 1.2 * speedError;
+	    thrustCorrection = Math.max(MIN_THRUST, Math.min(MAX_THRUST, thrustCorrection));
 
-	        double airbrakeCommand = 0.0;
-	        if (speed > SPEED_TARGET + SPEED_TOLERANCE) {
-	            airbrakeCommand = Math.min(0.7, 0.05 * (speed - SPEED_TARGET));
-	        }
-	        this.getControlSurfaces().setAirbrakeDeployment(airbrakeCommand);
+	    // --- Thrust smoothing ---
+	    double maxThrustChangePerSec = 2.0; // max % thrust change per second
+	    double maxChangeThisStep = maxThrustChangePerSec * PlaneSimulationElement.getTimeStep();
+	    double thrustDelta = thrustCorrection - thrust;
+	    thrustDelta = clamp(thrustDelta, maxChangeThisStep, -maxChangeThisStep);
+	    double smoothedThrust = thrust + thrustDelta;
+	    smoothedThrust = Math.max(MIN_THRUST, Math.min(MAX_THRUST, smoothedThrust));
+	    this.getFADEC().setTHRUSTPercentage(smoothedThrust);
 
-	        logger.info(String.format(
-	            "Speed: %.2f m/s, Thrust: %.1f%%, Airbrake: %.2f",
-	            speed, thrustCorrection, airbrakeCommand
-	        ));
+	    // Airbrake control
+	    double targetAirbrake = 0.0;
+	    if (speed > SPEED_TARGET + SPEED_TOLERANCE) {
+	        targetAirbrake = Math.min(0.2, 0.05 * (speed - SPEED_TARGET));
 	    }
+
+	    double currentAirbrake = this.getControlSurfaces().getAirbrakeDeployment();
+	    double maxAirbrakeChangePerSec = 0.1; // por segundo
+	    double maxAirbrakeChangeThisStep = maxAirbrakeChangePerSec * PlaneSimulationElement.getTimeStep();
+	    double airbrakeDelta = clamp(targetAirbrake - currentAirbrake, maxAirbrakeChangeThisStep, -maxAirbrakeChangeThisStep);
+	    double smoothedAirbrake = clamp(currentAirbrake + airbrakeDelta, 1.0, 0.0);
+	    this.getControlSurfaces().setAirbrakeDeployment(smoothedAirbrake);
 
 
 	    // Control aerofrenos para evitar descensos bruscos (igual que antes)
@@ -377,6 +482,24 @@ public class L2_PartialAutomation extends L2_FlyingService implements IL2_Partia
 	        this.getControlSurfaces().setAirbrakeDeployment(0.0);
 	    }
 	}
+	private boolean checkServices() {
+	    IAttitudeSensor attitudeSensor = OSGiUtils.getService(context, IAttitudeSensor.class);
+	    IControlSurfaces controlSurfaces = OSGiUtils.getService(context, IControlSurfaces.class);
+	    IAltitudeSensor altimeterSensor = OSGiUtils.getService(context, IAltitudeSensor.class);
+	    ISpeedSensor speedSensor = OSGiUtils.getService(context, ISpeedSensor.class);
+	    IFADEC fadec = OSGiUtils.getService(context, IFADEC.class);
+	    INavigationSystem navigationSystem = OSGiUtils.getService(context, INavigationSystem.class);
+	    INotificationService notificationService = OSGiUtils.getService(context, INotificationService.class);
+
+	    return attitudeSensor != null &&
+	           controlSurfaces != null &&
+	           altimeterSensor != null &&
+	           speedSensor != null &&
+	           fadec != null &&
+	           navigationSystem != null &&
+	           notificationService != null;
+	}
+
 }
 
 

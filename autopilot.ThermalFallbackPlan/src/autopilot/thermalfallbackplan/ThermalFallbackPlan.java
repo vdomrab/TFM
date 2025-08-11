@@ -4,7 +4,10 @@ import org.osgi.framework.BundleContext;
 
 import autonomousplane.autopilot.interfaces.IFlyingService;
 import autonomousplane.autopilot.interfaces.IThermalFallbackPlan;
+import autonomousplane.infraestructure.OSGiUtils;
 import autonomousplane.infraestructure.autopilot.FallbackPlan;
+import autonomousplane.infraestructure.autopilot.FlyingService;
+import autonomousplane.infraestructure.devices.EGTSensor;
 import es.upv.pros.tatami.osgi.utils.logger.SmartLogger;
 import autonomousplane.devices.interfaces.IFADEC;
 import autonomousplane.devices.interfaces.IWeatherSensor;
@@ -39,14 +42,47 @@ public class ThermalFallbackPlan extends FallbackPlan implements IThermalFallbac
 
 	@Override
 	public IFlyingService performTheFlyingFunction() {
+
 		// Implement the logic for the thermal fallback plan
-		if (fadec == null || weatherSensor == null || egtSensor == null) {
+		if (checkRequirementsToPerformTheFlyingService() == false) {
 			logger.error("Required components are not set for Thermal Fallback Plan.");
 			return null; // or throw an exception
 		}
+		if (this.egtSensor.getTemperature() > EGTSensor.OVERHEAT_THRESHOLD_C) {
+				 this.egtSensor.setHeatingEnabled(false); // Activate cooling system
+	             this.egtSensor.setCoolingEnabled(true);
+	             this.fadec.setTHRUSTPercentage(75); // Reduce thrust to 75% to prevent further overheating
+			 
+	     } else if (this.egtSensor.getTemperature() < EGTSensor.ICE_DANGER_OAT_THRESHOLD_C && this.weatherSensor.getHumidity() > 70.0) {
+             this.egtSensor.setCoolingEnabled(false);
+	    	 this.egtSensor.setHeatingEnabled(true);
+             this.fadec.setTHRUSTPercentage(fadec.getCurrentThrust() + 20); // Reduce thrust to 75% to prevent further overheating
 
-		// Example logic: Use fadec, weatherSensor, and egtSensor to perform actions
-		logger.info("Performing thermal fallback actions with FADEC, EGT Sensor, and Weather Sensor.");
+	             
+	    }else {
+	    	 this.egtSensor.setCoolingEnabled(false);
+	    	 this.egtSensor.setHeatingEnabled(false);
+	    	 IFlyingService flyingService = OSGiUtils.getService(
+		        	    context,
+		        	    IFlyingService.class,
+		        	    "(&" +
+		        	      "(!(id=autopilot.StallRecoveryFallbackPlan))" +
+		        	      "(!(id=autopilot.ThermalFallbackPlan))" +
+		        	    ")"
+		        	);
+
+
+
+	    	 if (flyingService != null) {
+	    		    flyingService.startFlight();
+	    		    this.stopTheFlyingFunction();
+	    		    System.out.println("Thermal recovery completed, resuming normal flight.");
+	    		    return flyingService; // <-- Return the normal flying service
+	    		} else {
+	    		    logger.error("Thermal Fallback Plan: No IFlyingService available to continue normal flight.");
+	    		    return this;
+	    		}
+	    }
 		
 		// Return the flying service or perform necessary actions
 		return this; // Assuming this is the flying service being returned
@@ -54,7 +90,8 @@ public class ThermalFallbackPlan extends FallbackPlan implements IThermalFallbac
 	
 	@Override
 	public IFlyingService stopTheFlyingFunction() {
-		logger.info("Stall recovery completed.");
+		logger.info("Thermal recovery completed.");
+		this.setProperty(FlyingService.ACTIVE, false);
 		return this;
 	}
 	
@@ -62,13 +99,13 @@ public class ThermalFallbackPlan extends FallbackPlan implements IThermalFallbac
 	protected boolean checkRequirementsToPerformTheFlyingService() {
 		boolean ok = true;
 		if (this.fadec == null) {
-			logger.error("StallRecoveryFallbackPlan: FADEC service is not set.");
+			logger.error("ThermalFallbackPlan: FADEC service is not set.");
 			ok = false;
 		}else if (this.weatherSensor == null) {
-			logger.error("StallRecoveryFallbackPlan: Weather Sensor service is not set.");
+			logger.error("ThermalFallbackPlan: Weather Sensor service is not set.");
 			ok = false;
 		} else if (this.egtSensor == null) {
-			logger.error("StallRecoveryFallbackPlan: EGT Sensor service is not set.");
+			logger.error("ThermalFallbackPlan: EGT Sensor service is not set.");
 			ok = false;
 		}
 		

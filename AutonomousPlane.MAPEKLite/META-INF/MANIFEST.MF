@@ -5,11 +5,19 @@ Bundle-SymbolicName: AutonomousPlane.MAPEKLite
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: autonomousplane.mapeklite.Activator
 Bundle-RequiredExecutionEnvironment: JavaSE-21
-Import-Package: autonomousplane.infraestructure.autopilotARC,
+Import-Package: autonomousplane.autopilot.interfaces,
+ autonomousplane.devices.interfaces,
+ autonomousplane.infraestructure,
+ autonomousplane.infraestructure.autopilotARC,
+ autonomousplane.infraestructure.devices,
  autonomousplane.infraestructure.devices.ARC,
  autonomousplane.infraestructure.interaction.ARC,
+ autonomousplane.interfaces,
  autonomousplane.l0_manualnavigation,
+ autopilot.emergencylandingfallbackplan,
+ autopilot.glidetosafetyfallbackplan,
  autopilot.stallrecoveryfallbackplan,
+ autopilot.thermalfallbackplan,
  es.upv.pros.tatami.adaptation.mapek.lite.ARC.artifacts.interfaces,
  es.upv.pros.tatami.adaptation.mapek.lite.ARC.structures.systemconfiguration.interfaces,
  es.upv.pros.tatami.adaptation.mapek.lite.artifacts.components,

@@ -20,6 +20,7 @@ import autonomousplane.infraestructure.OSGiUtils;
 import autonomousplane.infraestructure.Thing;
 import autonomousplane.infraestructure.devices.AltitudeSensor;
 import autonomousplane.infraestructure.devices.RadioAltimeterSensor;
+import autonomousplane.interfaces.EFlyingStages;
 import autonomousplane.simulation.interfaces.ISimulationElement;
 
 public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
@@ -102,7 +103,6 @@ public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
 				this.navigationSystem.calcualteCurrentDistance(this.speedSensor.getSpeed());
 			}
 		}*/
-		System.out.println("PlaneSimulationElement onSimulationSteasdp: " + this.attitudeSensor  );
 	
 		if(this.attitudeSensor != null ) {
 	        double roll = this.attitudeSensor.getRoll();
@@ -112,7 +112,6 @@ public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
 			this.attitudeSensor.setRoll(roll + attitudeSensor.getRollRate() * timeStepSeconds);
 			this.attitudeSensor.setYaw(yaw + attitudeSensor.getYawRate() * timeStepSeconds);
 			this.attitudeSensor.setPitch(pitch + this.attitudeSensor.getPitchRate() * timeStepSeconds);
-			System.out.println("PlaneSimulationElement onSimulationStep: " + this.attitudeSensor.getRoll() + " " + this.attitudeSensor.getYaw() + " " + this.attitudeSensor.getPitch());
 		}
 	
 		
@@ -142,6 +141,8 @@ public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
 		            speedSensor.getSpeedTAS(),
 		            aoa
 		        );
+			
+			
 			if(radioAltimeterSensor.isOnGround() && attitudeSensor.getPitch() < 0) {
 				attitudeSensor.setPitch(0); // Mantenemos el ángulo de cabeceo en 0
 			}
@@ -149,6 +150,8 @@ public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
 			        // Si el avión está en tierra y no hay aceleración vertical, mantenemos la altitud y velocidad
 			        altimeterSensor.setVerticalSpeed(0); // Mantén velocidad sin aceleración
 					altimeterSensor.setVerticalAcceleration(0); // Mantén velocidad sin aceleración
+				    altimeterSensor.setAltitude(radioAltimeterSensor.getRealGroundAltitude());
+
 			        
 			} else {
 					
@@ -161,6 +164,9 @@ public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
 				    // ✅ Ahora actualizamos la altitud con el nuevo verticalSpeed y deltaTime
 				    double deltaH = altimeterSensor.getVerticalSpeed() * timeStepSeconds;
 				    double newAltitude = altimeterSensor.getAltitude() + deltaH;
+				    if(newAltitude < radioAltimeterSensor.getRealGroundAltitude()) {
+				        newAltitude = radioAltimeterSensor.getRealGroundAltitude(); // No permitir altitud por debajo del mínimo
+				    } 
 				    altimeterSensor.setAltitude(newAltitude);
 				    
 				    radioAltimeterSensor.setGroundDistance(
@@ -180,15 +186,17 @@ public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
 		}
 			
 		
-		if (speedSensor != null && navigationSystem != null ){
+		if (speedSensor != null && navigationSystem != null && attitudeSensor != null && radioAltimeterSensor != null) {
 			if(speedSensor.getSpeedGS() != 0 ) {
 				navigationSystem.calcualteCurrentDistance(speedSensor.getSpeedGS() * timeStepSeconds);
-				System.out.println("PlaneSimulationElement onSimulationStep: " + speedSensor.getSpeedGS() * timeStepSeconds);
 			}
 			if(altimeterSensor != null ) {
+			    double altitude = altimeterSensor.getAltitude() - radioAltimeterSensor.getRealGroundAltitude();
 		    navigationSystem.setCurrentFlyghtStage(
-			        navigationSystem.calculateTheFlyingStage(altimeterSensor.getAltitude() - radioAltimeterSensor.getRealGroundAltitude())
-			    );
+			        navigationSystem.calculateTheFlyingStage(altitude, 
+			        		navigationSystem.getCurrentDistance(), 
+			        		navigationSystem.getTotalDistance(), 
+			        		attitudeSensor.getPitch()));
 
 			}
 		}
@@ -208,7 +216,7 @@ public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
 		}
 		
 		
-		if(this.fadec != null && this.weatherSensor != null && this.attitudeSensor != null && this.controlSurfaces != null && this.speedSensor != null) 
+		if(this.egtSensor != null && this.fadec != null && this.weatherSensor != null && this.attitudeSensor != null && this.controlSurfaces != null && this.speedSensor != null) 
 		{	
 			this.egtSensor.updateTemperature(
 		        fadec.getCurrentThrust(),
@@ -223,33 +231,19 @@ public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
 	}
 	
 	private void refreshServices() {
-	    if (aoaSensor == null)
 	        aoaSensor = OSGiUtils.getService(context, IAOASensor.class);
-	    if (flyingService == null)
 	        flyingService = OSGiUtils.getService(context, IFlyingService.class);
-	    if (attitudeSensor == null)
 	        attitudeSensor = OSGiUtils.getService(context, IAttitudeSensor.class);
-	    if (controlSurfaces == null)
 	        controlSurfaces = OSGiUtils.getService(context, IControlSurfaces.class);
-	    if (altimeterSensor == null)
 	        altimeterSensor = OSGiUtils.getService(context, IAltitudeSensor.class);
-	    if (speedSensor == null)
 	        speedSensor = OSGiUtils.getService(context, ISpeedSensor.class);
-	    if (radioAltimeterSensor == null)
 	        radioAltimeterSensor = OSGiUtils.getService(context, IRadioAltimeterSensor.class);
-	    if (fadec == null)
 	        fadec = OSGiUtils.getService(context, IFADEC.class);
-	    if (navigationSystem == null)
 	        navigationSystem = OSGiUtils.getService(context, INavigationSystem.class);
-	    if (weatherSensor == null)
 	        weatherSensor = OSGiUtils.getService(context, IWeatherSensor.class);
-	    if (fuelSensor == null)
 	    	fuelSensor = OSGiUtils.getService(context, IFuelSensor.class);
-	    if (egtSensor == null)
 	    	egtSensor = OSGiUtils.getService(context, IEGTSensor.class);
-	    if (landingSystem == null)
 	    	landingSystem = OSGiUtils.getService(context, ILandingSystem.class);
-	    if (proximitySensor == null)
 	    	proximitySensor = OSGiUtils.getService(context, IProximitySensor.class);
 	}
 

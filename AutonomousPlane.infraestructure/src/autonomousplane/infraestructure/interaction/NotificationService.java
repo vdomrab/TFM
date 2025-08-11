@@ -1,7 +1,10 @@
 package autonomousplane.infraestructure.interaction;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.osgi.framework.BundleContext;
 
@@ -22,18 +25,29 @@ public class NotificationService extends Thing implements INotificationService {
 		this.mechanisms = new ArrayList<String>();
 	}
 	@Override
-	public INotificationService notify(String message) {
-		if ( mechanisms == null || mechanisms.size() == 0 )
-			return this;
-		for (String m : this.mechanisms) {
-		    IInteractionMechanism mechanism = OSGiUtils.getService(context, IInteractionMechanism.class, String.format("(%s=%s)", IIdentifiable.ID, m));
-		    if (mechanism != null) {
-		        mechanism.performTheInteraction(message);
-		    }
-		}
-		
-		return this;
-		
+	public INotificationService notify(String message, String... mechanismsNames) {
+	    if (mechanisms == null || mechanisms.isEmpty())
+	        return this;
+
+	    // Convertimos la lista de mecanismos permitidos a un Set para búsqueda rápida
+	    Set<String> allowedMechanisms = new HashSet<>(Arrays.asList(mechanismsNames));
+
+	    for (String m : this.mechanisms) {
+	        // Solo enviamos si el mecanismo actual está en los permitidos
+	        if (!allowedMechanisms.contains(m)) continue;
+
+	        IInteractionMechanism mechanism = OSGiUtils.getService(
+	            context,
+	            IInteractionMechanism.class,
+	            String.format("(%s=%s)", IIdentifiable.ID, m)
+	        );
+
+	        if (mechanism != null) {
+	            mechanism.performTheInteraction(message);
+	        }
+	    }
+
+	    return this;
 	}
 
 	@Override

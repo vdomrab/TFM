@@ -1,4 +1,4 @@
-package autonomousplane.l3_advancedautomation;
+package autonomousplane.l3_intenseweathernavigation;
 
 import org.osgi.framework.BundleContext;
 
@@ -13,7 +13,6 @@ import autonomousplane.devices.interfaces.IAltitudeSensor;
 import autonomousplane.devices.interfaces.IAttitudeSensor;
 import autonomousplane.devices.interfaces.IControlSurfaces;
 import autonomousplane.devices.interfaces.IEGTSensor;
-import autonomousplane.devices.interfaces.IETL;
 import autonomousplane.devices.interfaces.IFADEC;
 import autonomousplane.devices.interfaces.IFuelSensor;
 import autonomousplane.devices.interfaces.ILandingSystem;
@@ -25,15 +24,13 @@ import autonomousplane.devices.interfaces.IWeatherSensor;
 import autonomousplane.infraestructure.OSGiUtils;
 import autonomousplane.infraestructure.autopilot.L3_FlyingService;
 import autonomousplane.infraestructure.devices.EGTSensor;
-import autonomousplane.infraestructure.devices.LandingSystem;
-import autonomousplane.infraestructure.devices.ProximitySensor;
 import autonomousplane.infraestructure.devices.SpeedSensor;
 import autonomousplane.interaction.interfaces.INotificationService;
 import autonomousplane.interfaces.EFlyingStages;
 import autonomousplane.simulation.simulator.PlaneSimulationElement;
 import es.upv.pros.tatami.osgi.utils.logger.SmartLogger;
-public class L3_AdvancedAutomation extends L3_FlyingService implements IL3_AdvancedAutomation {
-	public L3_AdvancedAutomation(BundleContext context, String id) {
+public class L3_IntenseWeatherNavigation extends L3_FlyingService implements IL3_AdvancedAutomation {
+	public L3_IntenseWeatherNavigation(BundleContext context, String id) {
 		super(context, id);
 		logger = SmartLogger.getLogger(context.getBundle().getSymbolicName());
 		this.setStabilityModeActive(true);
@@ -48,53 +45,52 @@ public class L3_AdvancedAutomation extends L3_FlyingService implements IL3_Advan
 	}
 	@Override
 	public IFlyingService performTheFlyingFunction() {
-	    if(checkServices()) {
-		    logger.info("Performing advanced automation...");
+		if(checkServices()) {
+			logger.info("Performing the flying function in L3_IntenseWeatherNavigation.");
+		    boolean correctionRequired = false;
+		    this.setLowFuelMode(); // Ensure low fuel mode is set
+		    double pitch = this.AHRSSensor.getPitch();
+		    double roll = this.AHRSSensor.getRoll();
+	        EFlyingStages stage = this.navigationSystem.getCurrentFlyghtStage();
+	        correctionRequired |= handleEngineFailure();
+	        correctionRequired |= checkTerrainAwareness(stage, radioAltimeterSensor.getGroundDistance(), altimeterSensor.getVerticalSpeed());
+	        correctionRequired |= handleStallWarnings();
+	        correctionRequired |= hangleEngineHeating();
+	        correctionRequired |= handleLowFuel();
+	        correctionRequired |= handleObjectsProximity(this.getProximitySensor().isObjectDetected());
+		    if (this.getStabilityModeActive()) {
+		        correctionRequired |= correctRollIfNeeded(roll);
 
-	    boolean correctionRequired = false;
-	    this.setLowFuelMode(); // Ensure low fuel mode is set
-	    double pitch = this.AHRSSensor.getPitch();
-	    double roll = this.AHRSSensor.getRoll();
-        EFlyingStages stage = this.navigationSystem.getCurrentFlyghtStage();
-        correctionRequired |= handleEngineFailure();
-        correctionRequired |= checkTerrainAwareness(stage, radioAltimeterSensor.getGroundDistance(), altimeterSensor.getVerticalSpeed());
-        correctionRequired |= handleStallWarnings();
-        correctionRequired |= hangleEngineHeating();
-        correctionRequired |= handleLowFuel();
-        correctionRequired |= handleObjectsProximity(this.getProximitySensor().isObjectDetected());
-	    if (this.getStabilityModeActive()) {
-	        correctionRequired |= correctRollIfNeeded(roll);
-
-	        switch (stage) {
-	            case CLIMB:
-	                correctionRequired |= handleClimbPhase(pitch);
-	                break;
-	            case DESCENT:
-	                manageDescentAndApproach();
-	                break;
-	            case CRUISE:
-	                adjustPitchThrustToMaintainAltitudeAndSpeedCruise();
-	                break;
-	            case TAKEOFF:
-	               correctionRequired |= handleTakeoffPhase(pitch);
-	                break;
-	            case LANDING:
-	                manageDescentAndApproach();
-	                break;
-	            default:
-	                break; // Other phases ignored here
-	        }
-	    }
-	       
-	        if (!correctionRequired) {
-	            logger.info("Monitoring flying parameters. Nothing to warn ...");
-	        }
-	    
-	    } else {
-	        logger.error("Cannot perform flying function missing essential components.");
-	    }
-	    return this;
-	}
+		        switch (stage) {
+		            case CLIMB:
+		                correctionRequired |= handleClimbPhase(pitch);
+		                break;
+		            case DESCENT:
+		                manageDescentAndApproach();
+		                break;
+		            case CRUISE:
+		                adjustPitchThrustToMaintainAltitudeAndSpeedCruise();
+		                break;
+		            case TAKEOFF:
+		               correctionRequired |= handleTakeoffPhase(pitch);
+		                break;
+		            case LANDING:
+		                manageDescentAndApproach();
+		                break;
+		            default:
+		                break; // Other phases ignored here
+		        }
+		    }
+		       
+		        if (!correctionRequired) {
+		            logger.info("Monitoring flying parameters. Nothing to warn ...");
+		        }
+		    
+		    } else {
+		        logger.error("Cannot perform flying function missing essential components.");
+		    }
+		    return this;
+		}
 	private boolean hangleEngineHeating() {
 	    boolean correctionRequired = false;
 
@@ -366,6 +362,7 @@ public class L3_AdvancedAutomation extends L3_FlyingService implements IL3_Advan
 	    }
 	    return false;
 	}
+
 
 	private void notifyStallCondition(String message, double aoa) {
 	    logger.info("Plane " + message);
@@ -718,7 +715,7 @@ public class L3_AdvancedAutomation extends L3_FlyingService implements IL3_Advan
 	        this.getControlSurfaces().setAirbrakeDeployment(0.0);
 	    }
 	}
-	
+
 	private boolean checkServices() {
 		 IAOASensor aoaSensor = OSGiUtils.getService(context, IAOASensor.class);
 		 IAttitudeSensor attitudeSensor = OSGiUtils.getService(context, IAttitudeSensor.class);
@@ -749,7 +746,4 @@ public class L3_AdvancedAutomation extends L3_FlyingService implements IL3_Advan
 	           notificationService != null &&
 	           proximitySensor != null;
 	}
-	
-	
 }
-

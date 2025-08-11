@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: L0_ManualNavigation
-Bundle-SymbolicName: L0_ManualNavigation
+Bundle-SymbolicName: autopilot.L0_ManualNavigation
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: autonomousplane.l0_manualnavigation.Activator
 Bundle-RequiredExecutionEnvironment: JavaSE-21

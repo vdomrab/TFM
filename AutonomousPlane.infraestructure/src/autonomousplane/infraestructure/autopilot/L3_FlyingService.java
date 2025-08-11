@@ -3,6 +3,7 @@ package autonomousplane.infraestructure.autopilot;
 import org.osgi.framework.BundleContext;
 
 import autonomousplane.autopilot.interfaces.IFlyingService;
+import autonomousplane.autopilot.interfaces.IL2_FlyingService;
 import autonomousplane.autopilot.interfaces.IL3_FlyingService;
 import autonomousplane.devices.interfaces.IEGTSensor;
 import autonomousplane.devices.interfaces.IETL;
@@ -54,7 +55,17 @@ public abstract class L3_FlyingService extends L2_FlyingService implements IL3_F
 	public ILandingSystem getLandingSystem() {
 		return this.landingSystem;
 	}
-	
+	public IL3_FlyingService performTheTakeOver() {
+		this.endFlight();
+		this.getNotificationService().notify("Exited Autonomous Mode", "GeneralWarning");
+		return this;
+	}
+	public IL3_FlyingService activateTheFallbackPlan() {
+		this.endFlight();
+		this.getFallbackPlan().startFlight();
+
+		return this;
+	}
 	
 	@Override
 	protected boolean checkRequirementsToPerformTheFlyingService() {

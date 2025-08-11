@@ -1,9 +1,9 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: L3_IntenseWeatherNavigation
-Bundle-SymbolicName: L3_IntenseWeatherNavigation
+Bundle-SymbolicName: autopilot.L3_IntenseWeatherNavigation
 Bundle-Version: 1.0.0.qualifier
-Bundle-Activator: l3_intenseweathernavigation.Activator
+Bundle-Activator: autonomousplane.l3_intenseweathernavigation.Activator
 Bundle-RequiredExecutionEnvironment: JavaSE-21
 Import-Package: autonomousplane.autopilot.interfaces,
  autonomousplane.devices.interfaces,

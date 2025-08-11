@@ -23,7 +23,6 @@ public abstract class FlyingService extends Thing implements IFlyingService, ISi
 	public IFlyingService startFlight() {
 		if (this.isFlying())
 			return this;
-
 		logger.debug("Starting the flying function ...");
 		this.setProperty(FlyingService.ACTIVE, true);
 		this.fly();

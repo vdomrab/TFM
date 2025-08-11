@@ -10,12 +10,11 @@ public class EGTSensor extends Thing implements IEGTSensor{
 	public static final String TEMPERATURE = "temperature";
 	public static final String COOLING_ENABLED = "coolingEnabled"; // Indica si el sistema de refrigeración está activo
 	public static final String HEATING_ENABLED = "heatingEnabled"; // Indica si el sistema de calefacción está activo
-	public static final double TEMP_MIN_C = 200.0;           // Idle o mínimo posible en marcha
 	public static final double TEMP_MAX_C = 1100.0;          // Daño crítico
 	public static final double OVERHEAT_THRESHOLD_C = 950.0; // Umbral de advertencia de sobrecalentamiento
 	
 	// Para detectar formación de hielo en admisión o fuselaje deberías usar temperatura exterior (OAT)
-	public static final double ICE_DANGER_OAT_THRESHOLD_C = 5.0; // Riesgo de formación de hielo por OAT
+	public static final double ICE_DANGER_OAT_THRESHOLD_C = 0; // Riesgo de formación de hielo por OAT
 	
 	public EGTSensor(BundleContext context, String id) {
 		
@@ -27,54 +26,76 @@ public class EGTSensor extends Thing implements IEGTSensor{
 	}
 	
 	public IEGTSensor updateTemperature(double thrust, double outsideTempC, double pressureHpa, double humidity) {
-		boolean coolingEnabled = this.isCoolingEnabled();
-		boolean heatingEnabled = this.isHeatingEnabled();
+	    boolean coolingEnabled = this.isCoolingEnabled();
+	    boolean heatingEnabled = this.isHeatingEnabled();
 	    if (coolingEnabled && heatingEnabled) {
-	            throw new IllegalArgumentException("Cooling and heating systems cannot be active at the same time.");
+	        throw new IllegalArgumentException("Cooling and heating systems cannot be active at the same time.");
 	    }
+
+	    // Caso especial: thrust = 0 y sin heating/cooling → igualar a temperatura exterior
+	    if (thrust == 0.0 && !coolingEnabled && !heatingEnabled) {
+	        this.setTemperature(outsideTempC, thrust, outsideTempC);
+	        return this;
+	    }
+
 	    // ISA estándar
 	    final double ISA_TEMP_C = 15.0;
 	    final double ISA_PRESSURE_HPA = 1013.25;
 
 	    double tempDeviation = outsideTempC - ISA_TEMP_C;
-        double pressureDeviation = ISA_PRESSURE_HPA - pressureHpa;
+	    double pressureDeviation = ISA_PRESSURE_HPA - pressureHpa;
 
-        // Temperatura base según thrust (simplificado)
-        double baseEGT = 300.0 + (thrust / 100.0) * 700.0;
+	    // Temperatura base según thrust (simplificado)
+	    double baseEGT = 300.0 + (thrust / 100.0) * 700.0;
 
-        // Ajustes ISA
-        double tempAdjustment = tempDeviation * 0.5;
-        double pressureAdjustment = pressureDeviation * 0.1;
+	    // Ajustes ISA
+	    double tempAdjustment = tempDeviation * 0.5;
+	    double pressureAdjustment = pressureDeviation * 0.1;
 
-        double currentTemp = baseEGT + tempAdjustment + pressureAdjustment;
+	    // Target nominal antes de reglas especiales
+	    double targetTemp = baseEGT + tempAdjustment + pressureAdjustment;
 
-        // Aplicar refrigeración
-        if (coolingEnabled) {
-            currentTemp -= 100.0;
-        }
+	    // Reglas para frío extremo y thrust bajo
+	    if (outsideTempC < 0.0 && thrust <= 5.0) {
+	        double thrustFactor = Math.min(1.0, thrust / 5.0);
+	        double extremeTarget = outsideTempC + 2.0;
+	        targetTemp = extremeTarget * (1.0 - thrustFactor) + targetTemp * thrustFactor;
+	    }
 
-        // Aplicar calefacción
-        if (heatingEnabled) {
-            currentTemp += 50.0;
-        }
+	    // Ajuste manual por sistemas del avión
+	    if (coolingEnabled) {
+	        targetTemp -= 100.0;
+	    }
+	    if (heatingEnabled) {
+	        targetTemp += 50.0;
+	    }
 
-        // Limitar temperatura dentro de los márgenes definidos
-        currentTemp = Math.max(TEMP_MIN_C, Math.min(TEMP_MAX_C, currentTemp));
-        this.setTemperature(currentTemp, thrust, outsideTempC);
+	    // Inercia térmica adaptativa
+	    double currentTemp = this.getTemperature();
+	    double tempDiff = Math.abs(currentTemp - targetTemp);
 
-        // Logging opcional de alertas
-        if (currentTemp > OVERHEAT_THRESHOLD_C) {
-            System.out.println("⚠️ WARNING: Engine Overheating! Temp = " + currentTemp + " °C");
-        } else if (outsideTempC < ICE_DANGER_OAT_THRESHOLD_C && humidity > 70.0) {
-            System.out.println("⚠️ Ice hazard detected on engine inlet!");
-        }
+	    if (targetTemp < currentTemp) {
+	        double coolingRate = Math.min(250.0, 10.0 + 0.25 * tempDiff);
+	        if (outsideTempC < 0.0 && thrust <= 5.0) {
+	            double extra = (1.0 - Math.min(1.0, thrust / 5.0)) * Math.min(150.0, tempDiff * 0.3);
+	            coolingRate += extra;
+	        }
+	        currentTemp = Math.max(currentTemp - coolingRate, targetTemp);
+	    } else {
+	        double heatingRate = Math.min(200.0, 20.0 + 0.5 * tempDiff);
+	        currentTemp = Math.min(currentTemp + heatingRate, targetTemp);
+	    }
 
-        return this;
-    }	
+	    currentTemp = Math.min(TEMP_MAX_C, currentTemp);
+
+	    this.setTemperature(currentTemp, thrust, outsideTempC);
+	    return this;
+	}
+
 	
 	public IEGTSensor setTemperature(double temperature, double thrust, double outsideTempC) {
 		if(thrust < 0 ) {
-		this.setProperty(EGTSensor.TEMPERATURE,  Math.max(TEMP_MIN_C, Math.min(TEMP_MAX_C, temperature)));
+		this.setProperty(EGTSensor.TEMPERATURE, Math.min(TEMP_MAX_C, temperature));
 		}else {
 			this.setProperty(EGTSensor.TEMPERATURE,  Math.max(outsideTempC, Math.min(TEMP_MAX_C, temperature)));
 		}

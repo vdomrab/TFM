@@ -13,6 +13,7 @@ import autonomousplane.devices.interfaces.ISpeedSensor;
 import autonomousplane.devices.interfaces.IWeatherSensor;
 import autonomousplane.infraestructure.OSGiUtils;
 import autonomousplane.infraestructure.autopilot.FallbackPlan;
+import autonomousplane.infraestructure.autopilot.FlyingService;
 import autonomousplane.infraestructure.autopilot.L2_FlyingService;
 import autonomousplane.infraestructure.devices.FADEC;
 import autonomousplane.simulation.simulator.PlaneSimulationElement;
@@ -79,10 +80,11 @@ public class StallRecoveryFallbackPlan extends FallbackPlan implements IStallRec
 
 	    // 2. Calcular AOA
 	    double currentAOA = this.aoaSensor.calculateAOA(tas, verticalSpeed, pitch);
-	    boolean inStall = currentAOA >= 15.0;
+	    boolean inStall = currentAOA >= 12.0;
 
 	    // 3. Si estamos en pérdida...
 	    if (inStall && pitch >= 0) {
+	    	System.out.println("Stall detected! Current AOA: " + currentAOA + " degrees AAAAAAAAAAAAAAAAA");
 	        double targetAOA = 10.0; // Objetivo seguro por debajo del stall
 	        double deltaPitchRequired = targetAOA - currentAOA; // Aproximamos que deltaPitch ≈ deltaAOA
 
@@ -98,26 +100,38 @@ public class StallRecoveryFallbackPlan extends FallbackPlan implements IStallRec
 	        // Limitar deflexión física realista del elevador
 	        elevatorDeflection = Math.max(-15.0, Math.min(elevatorDeflection, 15.0));
 
-	        // Logs de depuración
-	        System.out.println("STALLED!");
-	        System.out.println("AOA = " + currentAOA + "°, target = " + targetAOA + "°, ΔPitch ≈ " + deltaPitchRequired + "°");
-	        System.out.println("RecoveryTime = " + recoveryTime + "s, requiredPitchRate = " + requiredPitchRate + "°/s");
-	        System.out.println("Elevator deflection = " + elevatorDeflection + "°");
+	       
+	        
 
 	        // Aplicar recuperación
 	        controlSurface.setElevatorDeflection(elevatorDeflection);
-	        fadec.setTHRUSTPercentage(100.0); // Máximo empuje durante la recuperación
+	        fadec.setTHRUSTPercentage(95.0); // Máximo empuje durante la recuperación
 	    } else {
+	    	System.out.println("No stall detected. Current AOA: " + currentAOA + " degrees.");
 	        controlSurface.setElevatorDeflection(0.0); // Sin pérdida → elevador neutral
-	        IFlyingService flyingService =  OSGiUtils.getService(context, IFlyingService.class);
+	        IFlyingService flyingService = OSGiUtils.getService(
+	        	    context,
+	        	    IFlyingService.class,
+	        	    "(&" +
+	        	      "(!(id=autopilot.StallRecoveryFallbackPlan))" +
+	        	      "(!(id=autopilot.ThermalFallbackPlan))" +
+	        	    ")"
+	        	);
 
-	        if(flyingService != null) {
+	     // After stall recovery
+	        if (flyingService != null) {
+		        System.out.println(flyingService.getClass().getName() + " is the normal flying service.");
+
 	            flyingService.startFlight();
-		        this.stopTheFlyingFunction(); // Detener el servicio de recuperación
-// Continuar con el servicio de vuelo normal
+	            this.stopTheFlyingFunction();
+	            System.out.println("Stall recovery completed, resuming normal flight.");
+	            
+	            return flyingService; // <-- Return the normal flying service
 	        } else {
 	            logger.error("StallRecoveryFallbackPlan: No IFlyingService available to continue normal flight.");
+	            return this;
 	        }
+
 	        
 	    }
 
@@ -129,6 +143,7 @@ public class StallRecoveryFallbackPlan extends FallbackPlan implements IStallRec
 	@Override
 	public IFlyingService stopTheFlyingFunction() {
 		logger.info("Stall recovery completed.");
+		this.setProperty(FlyingService.ACTIVE, false);
 		return this;
 	}
 	

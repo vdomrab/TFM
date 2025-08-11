@@ -166,73 +166,100 @@ public class AHRSSensor extends Thing implements IAttitudeSensor{
 	    return yawDegrees;
 	}
 
-	 class ControlSurfaceListener implements ServiceListener {
-			private BundleContext context = null;
-			private AHRSSensor sensor = null;
+	class ControlSurfaceListener implements ServiceListener {
+	    private BundleContext context;
+	    private AHRSSensor sensor;
 
-			public ControlSurfaceListener(BundleContext context, AHRSSensor sensor) {
-				this.context = context;
-				this.sensor = sensor;
-			}
+	    // Últimos valores para evitar actualizaciones redundantes
+	    private Double lastRollRate = null;
+	    private Double lastPitchRate = null;
+	    private Double lastYawRate = null;
 
-			public void start() {
-				String filter = "(" + Constants.OBJECTCLASS + "=" + IControlSurfaces.class.getName() + ")";
-				try {
-					this.context.addServiceListener(this, filter);
-				} catch (InvalidSyntaxException e) {
-					e.printStackTrace();
-				}
-			}
+	    public ControlSurfaceListener(BundleContext context, AHRSSensor sensor) {
+	        this.context = context;
+	        this.sensor = sensor;
+	    }
 
-			public void stop() {
-				this.context.removeServiceListener(this);
-			}
+	    public void start() {
+	        String filter = "(" + Constants.OBJECTCLASS + "=" + IControlSurfaces.class.getName() + ")";
+	        try {
+	            this.context.addServiceListener(this, filter);
+	        } catch (InvalidSyntaxException e) {
+	            e.printStackTrace();
+	        }
+	    }
 
-			public void serviceChanged(ServiceEvent event) {
-			    ServiceReference<?> ref = event.getServiceReference();
-			    IControlSurfaces control = (IControlSurfaces) context.getService(ref);
-			    IWeatherSensor weatherSensor = getService(IWeatherSensor.class);    
-			    if(control == null ) {
-			        return; // No control surfaces or weather sensor available
-			    }
-			    double rollRate = 0.0;
-			    double pitchRate = 0.0;
-			    double yawRate = 0.0;
-			    if (weatherSensor == null) {
-			    		rollRate = control.getAileronDeflection() * 1.0 ;   
-					    pitchRate = control.getElevatorDeflection() * 0.6 ; 
-					    yawRate = control.getRudderDeflection() * 0.4 ;    
-			    }else {  
-			    		double densityFactor = sensor.calculateDensityFactor(weatherSensor);    		    
-			     		rollRate = control.getAileronDeflection() * 1.0 * densityFactor;   
-			     		pitchRate = control.getElevatorDeflection() * 0.6 * densityFactor; 
-			     		yawRate = control.getRudderDeflection() * 0.4 * densityFactor;    
-			    }
-			    switch (event.getType()) {
-			        case ServiceEvent.REGISTERED:
-			        case ServiceEvent.MODIFIED:
-			            sensor.updateAngularRates(rollRate, pitchRate, yawRate);
-			            break;
-			        case ServiceEvent.UNREGISTERING:
-			        case ServiceEvent.MODIFIED_ENDMATCH:
-			            sensor.updateAngularRates(0, 0, 0);
-			            break;
-			        default:
-			            break;
-			    }
-			}
-			
-			private <T> T getService(Class<T> clazz) {
-			    try {
-			        ServiceReference<?>[] refs = context.getServiceReferences(clazz.getName(), null);
-			        if (refs != null && refs.length > 0) {
-			            return clazz.cast(context.getService(refs[0]));
-			        }
-			    } catch (Exception e) {
-			        e.printStackTrace();
-			    }
-			    return null;
-			}
-		}
+	    public void stop() {
+	        this.context.removeServiceListener(this);
+	    }
+
+	    @Override
+	    public void serviceChanged(ServiceEvent event) {
+	        ServiceReference<?> ref = event.getServiceReference();
+	        IControlSurfaces control = (IControlSurfaces) context.getService(ref);
+	        IWeatherSensor weatherSensor = getService(IWeatherSensor.class);
+
+	        if (control == null) {
+	            return; // No hay control surfaces
+	        }
+
+	        double rollRate;
+	        double pitchRate;
+	        double yawRate;
+
+	        if (weatherSensor == null) {
+	            rollRate = control.getAileronDeflection() * 1.0;
+	            pitchRate = control.getElevatorDeflection() * 0.6;
+	            yawRate = control.getRudderDeflection() * 0.4;
+	        } else {
+	            double densityFactor = sensor.calculateDensityFactor(weatherSensor);
+	            rollRate = control.getAileronDeflection() * 1.0 * densityFactor;
+	            pitchRate = control.getElevatorDeflection() * 0.6 * densityFactor;
+	            yawRate = control.getRudderDeflection() * 0.4 * densityFactor;
+	        }
+
+	        switch (event.getType()) {
+	            case ServiceEvent.REGISTERED:
+	            case ServiceEvent.MODIFIED:
+	                // Solo actualiza si hay cambios reales
+	                if (!valuesAreEqual(rollRate, lastRollRate) ||
+	                    !valuesAreEqual(pitchRate, lastPitchRate) ||
+	                    !valuesAreEqual(yawRate, lastYawRate)) {
+
+	                    sensor.updateAngularRates(rollRate, pitchRate, yawRate);
+
+	                    lastRollRate = rollRate;
+	                    lastPitchRate = pitchRate;
+	                    lastYawRate = yawRate;
+	                }
+	                break;
+
+	            case ServiceEvent.UNREGISTERING:
+	            case ServiceEvent.MODIFIED_ENDMATCH:
+	                sensor.updateAngularRates(0, 0, 0);
+	                lastRollRate = 0.0;
+	                lastPitchRate = 0.0;
+	                lastYawRate = 0.0;
+	                break;
+	        }
+	    }
+
+	    private boolean valuesAreEqual(Double a, Double b) {
+	        if (a == null || b == null) return false;
+	        return Math.abs(a - b) < 0.0001; // tolerancia para evitar falsos cambios por decimales
+	    }
+
+	    private <T> T getService(Class<T> clazz) {
+	        try {
+	            ServiceReference<?>[] refs = context.getServiceReferences(clazz.getName(), null);
+	            if (refs != null && refs.length > 0) {
+	                return clazz.cast(context.getService(refs[0]));
+	            }
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	        }
+	        return null;
+	    }
+	}
 	}
 

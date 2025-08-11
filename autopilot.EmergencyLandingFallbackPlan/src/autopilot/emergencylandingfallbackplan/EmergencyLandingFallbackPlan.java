@@ -16,6 +16,7 @@ import autonomousplane.devices.interfaces.IRadioAltimeterSensor;
 import autonomousplane.devices.interfaces.ISpeedSensor;
 import autonomousplane.devices.interfaces.IWeatherSensor;
 import autonomousplane.infraestructure.autopilot.FallbackPlan;
+import autonomousplane.simulation.simulator.PlaneSimulationElement;
 
 public class EmergencyLandingFallbackPlan extends FallbackPlan implements IEmergencyLandingFallbackPlan {
 
@@ -87,9 +88,26 @@ public class EmergencyLandingFallbackPlan extends FallbackPlan implements IEmerg
 	public IFlyingService performTheFlyingFunction() {
 		// Implement the logic for the thermal fallback plan
 		
+		if(checkRequirementsToPerformTheFlyingService() == false) {
+			logger.error("Required components are not set for Emergency Landing Fallback Plan.");
+			return null; // or throw an exception
+		}
+	    double altitude = altitudeSensor.getAltitude();
+	    double groundAltitude = radioAltimeter.getRealGroundAltitude();
+	    double realGroundDistance = altitude - groundAltitude;
+		if(realGroundDistance > 0) {
+			// Handle emergency descent
+			handleImmediateEmergencyDescent();
+			logger.info("Performing Emergency Landing fallback actions.");
 
+		} else {
+			// Handle landing procedures
+			logger.info("Emergency Landing Finished.");
+			// Perform landing logic here
+			this.stopTheFlyingFunction();
+			// Additional landing logic can be added here
+		}
 		// Example logic: Use fadec, weatherSensor, and egtSensor to perform actions
-		logger.info("Performing thermal fallback actions with FADEC, EGT Sensor, and Weather Sensor.");
 		
 		// Return the flying service or perform necessary actions
 		return this; // Assuming this is the flying service being returned
@@ -105,22 +123,22 @@ public class EmergencyLandingFallbackPlan extends FallbackPlan implements IEmerg
 	protected boolean checkRequirementsToPerformTheFlyingService() {
 		boolean ok = true;
 		if(speedSensor == null) {
-			logger.error("GlideToSafetyFallbackPlan: Speed Sensor service is not set.");
+			logger.error("EmergencyLandingFallbackPlan: Speed Sensor service is not set.");
 			ok = false;
 		} else if (radioAltimeter == null) {
-			logger.error("GlideToSafetyFallbackPlan: Radio Altimeter service is not set.");
+			logger.error("EmergencyLandingFallbackPlan: Radio Altimeter service is not set.");
 			ok = false;
 		} else if (controlSurfaces == null) {
-			logger.error("GlideToSafetyFallbackPlan: Control Surfaces service is not set.");
+			logger.error("EmergencyLandingFallbackPlan: Control Surfaces service is not set.");
 			ok = false;
 		} else if (attitudeSensor == null) {
-			logger.error("GlideToSafetyFallbackPlan: Attitude Sensor service is not set.");
+			logger.error("EmergencyLandingFallbackPlan: Attitude Sensor service is not set.");
 			ok = false;
 		} else if (altitudeSensor == null) {
-			logger.error("GlideToSafetyFallbackPlan: Altitude Sensor service is not set.");
+			logger.error("EmergencyLandingFallbackPlan: Altitude Sensor service is not set.");
 			ok = false;
 		} else if (etlSensor == null) {
-			logger.error("GlideToSafetyFallbackPlan: ETL Sensor service is not set.");
+			logger.error("EmergencyLandingFallbackPlan: ETL Sensor service is not set.");
 			ok = false;
 		}else if (fadec == null) {
 			logger.error("EmergencyLandingFallbackPlan: FADEC service is not set.");
@@ -140,7 +158,84 @@ public class EmergencyLandingFallbackPlan extends FallbackPlan implements IEmerg
 		return ok;
 	}
 	
-	
-	// Implement other methods from IEmergencyLandingFallbackPlan here...
+	private void handleImmediateEmergencyDescent() {
+	    double altitude = altitudeSensor.getAltitude();
+	    double groundAltitude = radioAltimeter.getRealGroundAltitude();
+	    double realGroundDistance = altitude - groundAltitude;
 
+	    double pitch = attitudeSensor.getPitch();
+	    double thrust = fadec.getCurrentThrust();
+	    double speed = speedSensor.getSpeedGS();
+	    double densityFactor = attitudeSensor.calculateDensityFactor(weatherSensor);
+	    double correctionTime = PlaneSimulationElement.getTimeStep() * 2.0;
+
+	    final double LANDING_SPEED = 75.0;         // m/s (~270 km/h)
+	    final double DESCENT_SPEED = 140.0;        // m/s (~500 km/h)
+	    final double FLARE_START = 30.0;           // Start flare at 30 m above ground
+
+	    // --- Descent or Flare ---
+	    if (realGroundDistance > FLARE_START) {
+	        // Normal Descent Phase (start immediately)
+	        double desiredPitch = -4.0;  // Smooth descent
+	        double pitchError = desiredPitch - pitch;
+	        double pitchRate = pitchError / correctionTime;
+	        double deflection = pitchRateToDeflection(pitchRate, densityFactor);
+	        controlSurfaces.setElevatorDeflection(deflection);
+
+	        // Control thrust to maintain descent speed
+	        double speedError = DESCENT_SPEED - speed;
+	        double targetThrust = clamp(thrust + speedError * 0.5, 20.0, 50.0);
+	        fadec.setTHRUSTPercentage(targetThrust);
+
+	        // Apply airbrakes only if too fast
+	        double airbrake = (speed > DESCENT_SPEED + 5.0) ? 0.2 : 0.0;
+	        smoothAirbrakeAdjustment(airbrake);
+
+	        logger.info(String.format(
+	            "Emergency Descent: Alt=%.1f m, GroundDist=%.1f m, Speed=%.1f m/s, Pitch=%.1f°, Defl=%.1f°, Thrust=%.1f%%",
+	            altitude, realGroundDistance, speed, pitch, deflection, targetThrust));
+
+	    } else {
+	        // Flare Phase (soft touchdown)
+	        double desiredPitch = 2.0;  // Nose-up for landing
+	        double pitchError = desiredPitch - pitch;
+	        double pitchRate = pitchError / correctionTime;
+	        double deflection = pitchRateToDeflection(pitchRate, densityFactor);
+	        controlSurfaces.setElevatorDeflection(deflection);
+
+	        // Thrust down to idle
+	        double thrustDelta = clamp(0.0 - thrust, 2.0, -2.0);
+	        fadec.setTHRUSTPercentage(thrust + thrustDelta);
+
+	        // Airbrake for landing
+	        smoothAirbrakeAdjustment(0.5);
+
+	        logger.info(String.format(
+	            "Landing Flare: GroundDist=%.1f m, Speed=%.1f m/s, Pitch=%.1f°, Defl=%.1f°, Thrust=%.1f%%",
+	            realGroundDistance, speed, pitch, deflection, thrust));
+	    }
+
+	    // On-Ground Handling
+	    if (radioAltimeter.isOnGround()) {
+	        controlSurfaces.setElevatorDeflection(0.0);
+	        fadec.setTHRUSTPercentage(0.0);
+	        smoothAirbrakeAdjustment(1.0); // full airbrakes
+	        logger.info("Touchdown: Thrust 0%, Airbrakes Full, Elevator Neutral.");
+	    }
+	}
+	private double pitchRateToDeflection(double pitchRate, double densityFactor) {
+	    double deflection = pitchRate / (0.6 * densityFactor);
+	    return clamp(deflection, 15.0, -15.0);
+	}
+
+	private void smoothAirbrakeAdjustment(double targetAirbrake) {
+	    double currentAirbrake = controlSurfaces.getAirbrakeDeployment();
+	    double maxChange = 0.1 * PlaneSimulationElement.getTimeStep();
+	    double delta = clamp(targetAirbrake - currentAirbrake, maxChange, -maxChange);
+	    controlSurfaces.setAirbrakeDeployment(clamp(currentAirbrake + delta, 1.0, 0.0));
+	}
+
+	private double clamp(double value, double max, double min) {
+	    return Math.max(min, Math.min(max, value));
+	}
 }

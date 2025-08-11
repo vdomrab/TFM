@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: L2_PartialAutomation
-Bundle-SymbolicName: L2_PartialAutomation
+Bundle-SymbolicName: autopilot.L2_PartialAutomation
 Bundle-Version: 1.0.0.qualifier
 Export-Package: autonomousplane.l2_partialautomation
 Bundle-Activator: autonomousplane.l2_partialautomation.Activator
