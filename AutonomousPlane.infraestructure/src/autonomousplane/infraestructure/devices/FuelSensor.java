@@ -223,7 +223,6 @@ public class FuelSensor extends Thing implements IFuelSensor {
 		            return clazz.cast(context.getService(refs[0]));
 		        }
 		    } catch (Exception e) {
-		        e.printStackTrace();
 		    }
 		    return null;
 		}
