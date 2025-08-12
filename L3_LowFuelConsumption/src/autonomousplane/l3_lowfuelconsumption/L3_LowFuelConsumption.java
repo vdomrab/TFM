@@ -95,7 +95,7 @@ public class L3_LowFuelConsumption extends L3_FlyingService implements IL3_Advan
 		    }
 		    return this;
 		}
-	private boolean hangleEngineHeating() {
+	public boolean hangleEngineHeating() {
 	    boolean correctionRequired = false;
 
 		if (this.getEGTSensor().getTemperature() > EGTSensor.OVERHEAT_THRESHOLD_C) {
@@ -121,7 +121,7 @@ public class L3_LowFuelConsumption extends L3_FlyingService implements IL3_Advan
 	   return correctionRequired;
 	    	 
 	}
-	private boolean handleLowFuel() {
+	public boolean handleLowFuel() {
 	    boolean correctionRequired = false;
 	    double fuelLevel = fuelSensor.getFuelLevel();
 	    double estimatedRange = fuelSensor.getEstimatedRangeMeters(this.getSpeedSensor().getSpeedTAS()); // True Airspeed in m/s
@@ -144,7 +144,7 @@ public class L3_LowFuelConsumption extends L3_FlyingService implements IL3_Advan
 	    }
 	    return correctionRequired;
 	}
-	private boolean handleEngineFailure() {
+	public boolean handleEngineFailure() {
 	    boolean correctionRequired = false;    
 		if (this.getFADEC().isFailure()) {     
 				logger.error("FADEC service is present but unregistered.");
@@ -349,7 +349,7 @@ public class L3_LowFuelConsumption extends L3_FlyingService implements IL3_Advan
 	    return true;
 	}
 
-	private boolean handleStallWarnings() {
+	public boolean handleStallWarnings() {
 	    double aoa = this.getAOASensor().getAOA();
 	    if (aoa > 12 && aoa < 15) {
 	        notifyStallCondition("approaching stall condition", aoa);
@@ -480,7 +480,7 @@ public class L3_LowFuelConsumption extends L3_FlyingService implements IL3_Advan
 	    return correctionDone;
 	}
 	
-	private boolean handleObjectsProximity(boolean objectDetected) {
+	public boolean handleObjectsProximity(boolean objectDetected) {
 		if(objectDetected) {
 			this.getProximitySensor().setObjectDetected(false); // Indica que se ha detectado un objeto cercano
 			return true; // Indica que se ha detectado un objeto cercano

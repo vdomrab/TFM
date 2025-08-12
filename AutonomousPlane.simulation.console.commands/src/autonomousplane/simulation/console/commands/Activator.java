@@ -45,18 +45,6 @@ public class Activator implements BundleActivator {
 					"show", 						
 				
 					//
-				// SIMULACIÓN LECTURAS DE SENSORES
-				//
-					//  AOA : sensores de angulo de ataque (AOASensor)
-					//
-					//	Modo uso
-					//		AOA [ set ]  [ double ]
-					//		AOA [ get ]	
-					//  Ejemplo: detección de línea derecha de carril
-					//		AOA get
-					"AOA", 
-					
-
 				//	
 				// PARÁMETROS DE CONTEXTO
 				//	
@@ -245,7 +233,7 @@ public class Activator implements BundleActivator {
 					//		  de servicio de vuelo adecuado para el avión.
 					//
 					//
-					"flying",
+					//"flying",
 					
 				//
 				// SIMULADOR

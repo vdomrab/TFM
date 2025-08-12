@@ -7,9 +7,7 @@ public interface IAttitudeSensor {
 	double getRollRate();
 	double getPitchRate();
 	double getYawRate();
-	
-	boolean isTurbulenceDetected();
-	
+		
 	IAttitudeSensor setRoll(double roll);
 	IAttitudeSensor setPitch(double pitch);
 	IAttitudeSensor setYaw(double yaw);

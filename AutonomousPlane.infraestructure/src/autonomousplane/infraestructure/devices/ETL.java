@@ -31,9 +31,9 @@ public class ETL extends Thing implements IETL{
 			double thrust,
 			String destination,
 			EFlyingStages phase) {
-		Map<String, Object> signal = buildEmergencySignal(emergencyCode, timestamp, altitude, verticalSpeed, pitch, roll, yaw, airspeed, groundSpeed, angleOfAttack, thrust, destination, phase);
-		this.setProperty(ETL.SIGNAL_SENT, true);
-		this.setProperty(ETL.SIGNAL_INFO, signal);
+		//Map<String, Object> signal = buildEmergencySignal(emergencyCode, timestamp, altitude, verticalSpeed, pitch, roll, yaw, airspeed, groundSpeed, angleOfAttack, thrust, destination, phase);
+		//this.setProperty(ETL.SIGNAL_SENT, true);
+		//this.setProperty(ETL.SIGNAL_INFO, signal);
 		return this;
 	}
 	

@@ -22,8 +22,8 @@ public class FuelSensor extends Thing implements IFuelSensor {
 	public final static String LOW_FUEL_MODE = "LOW_FUEL_MODE"; // boolean, true if low fuel mode is active
 	public final static double MIN_FUEL_LEVEL = 0.0; 
 	public static final double MAX_FUEL_KG = 26000.0;
-    private static final double MAX_FLOW_RATE_KG_PER_SEC = 2.5; // consumo máx. a 100% thrust
-    private static final double IDLE_BURN_RATE_KG_PER_SEC = 0.1; // At 0% thrust (idle)
+	public static final double MAX_FLOW_RATE_KG_PER_SEC = 2.5; // consumo máx. a 100% thrust
+	public static final double IDLE_BURN_RATE_KG_PER_SEC = 0.1; // At 0% thrust (idle)
     protected FuelSensorListener listener = null; // Listener para eventos de combustible
    
     public FuelSensor(BundleContext context, String id) {

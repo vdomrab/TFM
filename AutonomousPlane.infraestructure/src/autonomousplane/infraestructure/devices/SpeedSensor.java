@@ -121,39 +121,6 @@ public class SpeedSensor extends Thing implements ISpeedSensor {
     	}
 
     
-    /*
-    public double calcualteSpeedIncreaseTAS(double thrust, double airDensity, double airBrakeLevel, double pitchDegrees) {
-    double currentSpeedHorizontalSpeed = this.getSpeedTAS();
-    double relativeSpeed = currentSpeedHorizontalSpeed;
-
-    double pitchRad = Math.toRadians(pitchDegrees);
-    double FThrustTotal = (thrust / 100.0) * MAX_THRUST_FORCE;
-    double FThrustHorizontal = FThrustTotal * Math.cos(pitchRad);
-
-    double effectiveCd = DRAG_COEFFICIENT + (AIR_BRAKE_DRAG_COEFFICIENT * airBrakeLevel);
-    double dragForce = 0.5 * effectiveCd * airDensity * SpeedSensor.FRONTAL_AREA * Math.pow(relativeSpeed, 2);
-
-    // Fuerza de rodadura
-    double frictionCoefficient = 0.03; // coeficiente típico para rodaje en pista
-    double gravity = 9.81; // m/s²
-    double rollingResistanceForce = frictionCoefficient * PLANE_MASS * gravity;
-
-    // La fuerza de rodadura siempre se opone al movimiento, si la velocidad es 0 no tiene efecto
-    if (relativeSpeed > 0) {
-        rollingResistanceForce = rollingResistanceForce;
-    } else {
-        rollingResistanceForce = 0;
-    }
-
-    // Sumamos todas las fuerzas que frenan (drag + rodadura) y restamos empuje
-    double netForce = FThrustHorizontal - dragForce - rollingResistanceForce;
-
-    double acceleration = netForce / PLANE_MASS; // m/s²
-    System.out.println("Net Force: " + netForce + ", Acceleration: " + acceleration);
-    return acceleration; // devuelve en m/s²
-}
-*/
-    
     public double calculateGroundSpeed(double tas, double windSpeed, double windAngleDegrees) {
         double windAngleRad = Math.toRadians(windAngleDegrees);
         double windSpeedKmH = windSpeed;

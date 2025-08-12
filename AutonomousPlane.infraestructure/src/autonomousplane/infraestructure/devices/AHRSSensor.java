@@ -21,12 +21,7 @@ public class AHRSSensor extends Thing implements IAttitudeSensor{
 	public static final String ROLL_RATE = "roll_rate";
 	public static final String PITCH_RATE = "pitch_rate";
 	public static final String YAW_RATE = "yaw_rate";
-	// Turbulence detection
-	public static final String TURBULENCE_DETECTED = "turbulence_detected";
-	// Turbulence threshold
-	public static final double TURBULENCE_THRESHOLD_ROLL = 45.0;   // 75% de 60
-	public static final double TURBULENCE_THRESHOLD_PITCH = 15.0;  // 75% de 20
-	public static final double TURBULENCE_THRESHOLD_YAW = 12.0;    // 80% de 15
+
 	// Angle limits
 	public static final double MAX_PITCH = 25.0;
 	public static final double MIN_PITCH = -15.0;
@@ -88,12 +83,6 @@ public class AHRSSensor extends Thing implements IAttitudeSensor{
 	}
 
 	@Override
-	public boolean isTurbulenceDetected() {
-		
-		return (boolean) this.getProperty(TURBULENCE_DETECTED);
-	}
-
-	@Override
 	public IAttitudeSensor setRoll(double roll) {
 		double clampedRoll = Math.max(MIN_ROLL, Math.min(roll, MAX_ROLL));
 		this.setProperty(ROLL_ANGLE, clampedRoll);
@@ -120,7 +109,7 @@ public class AHRSSensor extends Thing implements IAttitudeSensor{
 	    this.setProperty(ROLL_RATE, clampRate(rollRate, MAX_ROLL_RATE, MIN_ROLL_RATE));
 	    this.setProperty(PITCH_RATE, clampRate(pitchRate, MAX_PITCH_RATE, MIN_PITCH_RATE));
 	    this.setProperty(YAW_RATE, clampRate(yawRate, MAX_YAW_RATE, MIN_YAW_RATE));
-	    detectTurbulence();
+	    
 	    return this;
 	}
 
@@ -128,13 +117,7 @@ public class AHRSSensor extends Thing implements IAttitudeSensor{
 	    return Math.max(minRate, Math.min(rate, maxRate));
 	}
 	 
-	 private void detectTurbulence() {
-		    boolean turbulence = Math.abs(getRollRate()) > TURBULENCE_THRESHOLD_ROLL ||
-		                         Math.abs(getPitchRate()) > TURBULENCE_THRESHOLD_PITCH ||
-		                         Math.abs(getYawRate()) > TURBULENCE_THRESHOLD_YAW;
-		    this.setProperty(TURBULENCE_DETECTED, turbulence);
-	 }
-	 
+	
 	 @Override
 		public IThing registerThing() {
 			super.registerThing();

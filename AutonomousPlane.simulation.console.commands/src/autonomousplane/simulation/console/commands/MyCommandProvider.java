@@ -287,32 +287,6 @@ public class MyCommandProvider {
 	}
 
 
-	public void aoa(String property, double value) {
-		IAOASensor aoaSensor = OSGiUtils.getService(context, IAOASensor.class);
-		if (aoaSensor == null) {
-			System.out.println("AOA Sensor not available.");
-			return;
-		}
-		
-		if (property.equalsIgnoreCase("set")) {
-			try {
-				double aoaValue = value; // Assuming value is already a double
-				aoaSensor.setAOA(aoaValue);
-				System.out.println("AOA set to: " + aoaValue);
-			} catch (NumberFormatException e) {
-				System.out.println("Invalid AOA value: " + value);
-			}
-		} else if (property.equalsIgnoreCase("get")) {
-			System.out.println("Current AOA: " + aoaSensor.getAOA());
-		} else {
-			System.out.println("Unknown property: " + property);
-		}
-		
-		
-		
-		
-	}
-	
 	public void controlSurface(String surface, double value) {
 	    IControlSurfaces controlSurfaces = OSGiUtils.getService(context, IControlSurfaces.class);
 	    if (controlSurfaces == null) {
@@ -738,7 +712,7 @@ public class MyCommandProvider {
 		proximitySensor.setObjectDetected(Value);
 		System.out.println("The value of the proximity objects has changed:" + Value);
 	}
-	public void flying(String function) {
+	/*public void flying(String function) {
 	    if (function.equalsIgnoreCase("L0")) {
 
 	        // 1. Crear las dependencias (sensor y mecanismos de interacción)
@@ -773,7 +747,7 @@ public class MyCommandProvider {
 	    } else {
 	        System.out.println("Flying function is not implemented in this version.");
 	    }
-	}
+	}*/
 
 
 	public void next() {
