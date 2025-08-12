@@ -22,7 +22,6 @@ public final class OSGiUtils {
 		try {
 			refs = context.getServiceReferences(clase, filter);
 		} catch (InvalidSyntaxException e) {
-			e.printStackTrace();
 			return null;
 		}
 
@@ -43,7 +42,6 @@ public final class OSGiUtils {
 		try {
 			refs = context.getServiceReferences(clase, filter);
 		} catch (InvalidSyntaxException e) {
-			e.printStackTrace();
 			return null;
 		}
 		

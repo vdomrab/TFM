@@ -18,7 +18,6 @@ public abstract class AbstractAltitudeRateListener implements ServiceListener {
 	            this.context.addServiceListener(this, filterSpeed);
 	            this.context.addServiceListener(this, filterAngle);
 	        } catch (InvalidSyntaxException e) {
-	            e.printStackTrace();
 	        }
 	    }
 
@@ -37,7 +36,6 @@ public abstract class AbstractAltitudeRateListener implements ServiceListener {
 	                speedSensor = (ISpeedSensor) context.getService(speedRefs[0]);
 	            }
 	        } catch (InvalidSyntaxException e) {
-	            e.printStackTrace();
 	        }
 
 	        try {
@@ -46,7 +44,6 @@ public abstract class AbstractAltitudeRateListener implements ServiceListener {
 	                attitudeSensor = (IAttitudeSensor) context.getService(attitudeRefs[0]);
 	            }
 	        } catch (InvalidSyntaxException e) {
-	            e.printStackTrace();
 	        }
 
 	        switch (event.getType()) {
