@@ -225,7 +225,7 @@ public class WeatherSensor extends Thing implements IWeatherSensor{
 	        try {
 	            this.context.addServiceListener(this, filter);
 	        } catch (InvalidSyntaxException e) {
-	            e.printStackTrace();
+
 	        }
 	    }
 

@@ -177,7 +177,6 @@ public class FuelSensor extends Thing implements IFuelSensor {
 	        try {
 	            this.context.addServiceListener(this, filter);
 	        } catch (InvalidSyntaxException e) {
-	            e.printStackTrace();
 	        }
 	    }
 

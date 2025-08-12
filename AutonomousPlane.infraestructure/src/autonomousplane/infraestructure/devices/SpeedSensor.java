@@ -201,7 +201,7 @@ public class SpeedSensor extends Thing implements ISpeedSensor {
 		        try {
 		            this.context.addServiceListener(this, filter);
 		        } catch (InvalidSyntaxException e) {
-		            e.printStackTrace();
+
 		        }
 		    }
 
@@ -262,7 +262,6 @@ public class SpeedSensor extends Thing implements ISpeedSensor {
 		                return clazz.cast(context.getService(refs[0]));
 		            }
 		        } catch (Exception e) {
-		            e.printStackTrace();
 		        }
 		        return null;
 		    }

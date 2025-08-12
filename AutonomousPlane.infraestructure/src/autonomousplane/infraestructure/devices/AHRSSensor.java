@@ -185,7 +185,7 @@ public class AHRSSensor extends Thing implements IAttitudeSensor{
 	        try {
 	            this.context.addServiceListener(this, filter);
 	        } catch (InvalidSyntaxException e) {
-	            e.printStackTrace();
+
 	        }
 	    }
 
@@ -256,7 +256,6 @@ public class AHRSSensor extends Thing implements IAttitudeSensor{
 	                return clazz.cast(context.getService(refs[0]));
 	            }
 	        } catch (Exception e) {
-	            e.printStackTrace();
 	        }
 	        return null;
 	    }
