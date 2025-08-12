@@ -69,10 +69,29 @@ public class MyCommandProvider {
 		ISpeedSensor speedSensor = OSGiUtils.getService(context, ISpeedSensor.class);
 		IRadioAltimeterSensor radioAltimeter = OSGiUtils.getService(context, IRadioAltimeterSensor.class);
 		IFADEC fadec = OSGiUtils.getService(context, IFADEC.class);
-		INavigationSystem gnss = OSGiUtils.getService(context, INavigationSystem.class);
+		INavigationSystem gnss = OSGiUtils.getService(context, INavigationSystem.class,
+		        "(" + IIdentifiable.ID + "=GNSS)");
+		    if (gnss == null) {
+		        gnss = OSGiUtils.getService(context, INavigationSystem.class,
+		            "(" + IIdentifiable.ID + "=RadioNavigationSystem)");
+		    }
 		IWeatherSensor weatherSensor = OSGiUtils.getService(context, IWeatherSensor.class);
-		ILandingSystem landingSystem = OSGiUtils.getService(context, ILandingSystem.class);
-		IFuelSensor fuelSensor = OSGiUtils.getService(context, IFuelSensor.class);
+		// Obtener el Landing System
+		ILandingSystem landingSystem = OSGiUtils.getService(context, ILandingSystem.class,
+		    "(" + IIdentifiable.ID + "=ILSSystem)");
+
+		if (landingSystem == null) {
+		    landingSystem = OSGiUtils.getService(context, ILandingSystem.class,
+		        "(" + IIdentifiable.ID + "=SVLDSystem)");
+		}
+
+		IFuelSensor fuelSensor = OSGiUtils.getService(context, IFuelSensor.class,
+			    "(" + IIdentifiable.ID + "=CapacitiveFuelSensor)");
+
+			if (fuelSensor == null) {
+			    fuelSensor = OSGiUtils.getService(context, IFuelSensor.class,
+			        "(" + IIdentifiable.ID + "=FloatSensor)");
+			}
 		IEGTSensor egtSensor = OSGiUtils.getService(context, IEGTSensor.class);
 		
 		if (flyingService == null ) {
@@ -475,8 +494,14 @@ public class MyCommandProvider {
 		
 	}
 	public void flyingStage(String stage) {
-		INavigationSystem gnss = OSGiUtils.getService(context, INavigationSystem.class);
-		ILandingSystem landingSystem = OSGiUtils.getService(context, ILandingSystem.class);
+		  INavigationSystem gnss = OSGiUtils.getService(context, INavigationSystem.class,
+			        "(" + IIdentifiable.ID + "=GNSS)");
+			    if (gnss == null) {
+			        gnss = OSGiUtils.getService(context, INavigationSystem.class,
+			            "(" + IIdentifiable.ID + "=RadioNavigationSystem)");
+			    }
+	    System.out.println("Setting flying stage to: " + gnss.getClass().getName());
+		//ILandingSystem landingSystem = OSGiUtils.getService(context, ILandingSystem.class);
 		IAltitudeSensor altitudeSensor = OSGiUtils.getService(context, IAltitudeSensor.class);
 		ISpeedSensor speedSensor = OSGiUtils.getService(context, ISpeedSensor.class);
 		IFADEC fadec = OSGiUtils.getService(context, IFADEC.class);
@@ -485,6 +510,7 @@ public class MyCommandProvider {
 			System.out.println("A sensor is not available.");
 			return;
 		}
+
 		if(gnss.getCurrentFlyghtStage() != EFlyingStages.TAKEOFF) {
 			System.out.println("Destination can only be set during TAKEOFF stage.");
 			return;
@@ -612,8 +638,20 @@ public class MyCommandProvider {
 		
 	}
 	public void fuelLevel(String property, String value) {
-		IFuelSensor fuelSensor = OSGiUtils.getService(context, IFuelSensor.class);
-		INavigationSystem gnss = OSGiUtils.getService(context, INavigationSystem.class);
+		IFuelSensor fuelSensor = OSGiUtils.getService(context, IFuelSensor.class,
+			    "(" + IIdentifiable.ID + "=CapacitiveFuelSensor)");
+
+			if (fuelSensor == null) {
+			    fuelSensor = OSGiUtils.getService(context, IFuelSensor.class,
+			        "(" + IIdentifiable.ID + "=FloatSensor)");
+			}
+			
+		INavigationSystem gnss = OSGiUtils.getService(context, INavigationSystem.class,
+			        "(" + IIdentifiable.ID + "=GNSS)");
+			    if (gnss == null) {
+			        gnss = OSGiUtils.getService(context, INavigationSystem.class,
+			            "(" + IIdentifiable.ID + "=RadioNavigationSystem)");
+			    }
 		
 		if (fuelSensor == null && gnss == null) {
 			System.out.println("Fuel Sensor or Navigation System not available.");
@@ -680,7 +718,13 @@ public class MyCommandProvider {
 		System.out.println("Heating Enabled set to: " + Value);
 	}
 	public void objectDetected(boolean Value) {
-		IProximitySensor proximitySensor = OSGiUtils.getService(context, IProximitySensor.class);
+		IProximitySensor proximitySensor = OSGiUtils.getService(context, IProximitySensor.class,
+			    "(" + IIdentifiable.ID + "=LIDARSensor)");
+
+			if (proximitySensor == null) {
+			    proximitySensor = OSGiUtils.getService(context, IProximitySensor.class,
+			        "(" + IIdentifiable.ID + "=FMCWRadarSensor)");
+			}
 		IRadioAltimeterSensor altitudeSensor = OSGiUtils.getService(context, IRadioAltimeterSensor.class);
 		if (proximitySensor == null || altitudeSensor == null) {
 			System.out.println("Proximity sensor or altitudeSensor not available.");

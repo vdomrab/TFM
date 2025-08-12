@@ -64,7 +64,7 @@ public class L3_AdvancedAutomation extends L3_FlyingService implements IL3_Advan
         correctionRequired |= handleObjectsProximity(this.getProximitySensor().isObjectDetected());
 	    if (this.getStabilityModeActive()) {
 	        correctionRequired |= correctRollIfNeeded(roll);
-
+	        System.out.println("Stage : " + stage + " degrees");
 	        switch (stage) {
 	            case CLIMB:
 	                correctionRequired |= handleClimbPhase(pitch);
@@ -126,11 +126,12 @@ public class L3_AdvancedAutomation extends L3_FlyingService implements IL3_Advan
 	    double fuelLevel = fuelSensor.getFuelLevel();
 	    double estimatedRange = fuelSensor.getEstimatedRangeMeters(this.getSpeedSensor().getSpeedTAS()); // True Airspeed in m/s
 	    double distanceToAirport = this.getNavigationSystem().getTotalDistance()- this.getNavigationSystem().getCurrentDistance();// meters
-	    
+	    System.out.println("Fuel level: " + fuelLevel + " meters, Estimated range: " + estimatedRange + " meters, Distance to airport: " + distanceToAirport + " meters");
 	    if (fuelLevel < 3000.0 && estimatedRange < 1.5 * distanceToAirport) {
 	    	 if(notificationService != null && notificationService.isMechanismAvailable("LowFuelWarning")) {
 		    	     this.getNotificationService().notify("⚠️ Critical fuel warning! Estimated range: " + estimatedRange + " meters.", "LowFuelWarning");
 	    	 }
+	    	 System.out.println("Fuel level: " + fuelLevel + " meters, Estimated range: " + estimatedRange + " meters, Distance to airport: " + distanceToAirport + " meters");
 	    	 if(this.getFallbackPlan() != null && this.getFallbackPlan() instanceof IEmergencyLandingFallbackPlan) {
 	             correctionRequired = true; // Indica que se ha activado el plan de contingencia
 	             logger.info("Activating fallback plan due to critical fuel level.");
@@ -388,7 +389,7 @@ public class L3_AdvancedAutomation extends L3_FlyingService implements IL3_Advan
 		    double minAGLThreshold = 900.0;         // metros
 		    double maxDescentRate = -3.0;           // m/s
 		    double timeToImpactThreshold = 15.0;    // segundos
-
+		    
 		    // Ajustes según fase de vuelo
 		    switch (this.navigationSystem.getCurrentFlyghtStage()) {
 		    case EFlyingStages.CLIMB:

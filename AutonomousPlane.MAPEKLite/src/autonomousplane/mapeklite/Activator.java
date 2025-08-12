@@ -9,6 +9,11 @@ import javax.naming.Binding;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 
+import autonomousplane.devices.interfaces.IFuelSensor;
+import autonomousplane.devices.interfaces.ILandingSystem;
+import autonomousplane.devices.interfaces.INavigationSystem;
+import autonomousplane.devices.interfaces.IProximitySensor;
+import autonomousplane.infraestructure.OSGiUtils;
 import autonomousplane.infraestructure.autopilotARC.FallbackPlanARC;
 import autonomousplane.infraestructure.autopilotARC.L0_FlyingServiceARC;
 import autonomousplane.infraestructure.autopilotARC.L1_FlyingServiceARC;
@@ -121,7 +126,7 @@ public class Activator implements BundleActivator {
 		IAdaptiveReadyComponent theADS_ThermalFallbackPlan = BasicMAPEKLiteLoopHelper.deployAdaptationRule(new ADS_ThermalFallbackPlan(bundleContext));
 		IAdaptiveReadyComponent theADS_TAWSWarning = BasicMAPEKLiteLoopHelper.deployAdaptationRule(new ADS_TAWSWarning(bundleContext));
 		IAdaptiveReadyComponent theADS_Downgrade = BasicMAPEKLiteLoopHelper.deployAdaptationRule(new autonomousplane.mapeklite.adaptationrules.ADS_Downgrade(bundleContext));
-		//IAdaptiveReadyComponent theADS_Replacements = BasicMAPEKLiteLoopHelper.deployAdaptationRule(new autonomousplane.mapeklite.adaptationrules.ADS_Replacements(bundleContext));
+		IAdaptiveReadyComponent theADS_Replacements = BasicMAPEKLiteLoopHelper.deployAdaptationRule(new autonomousplane.mapeklite.adaptationrules.ADS_Replacements(bundleContext));
 		// MONITORS
 
 		IAdaptiveReadyComponent AOAValueMonitorARC = BasicMAPEKLiteLoopHelper.deployMonitor(new AOAValueMonitor(bundleContext));
@@ -316,6 +321,7 @@ public class Activator implements BundleActivator {
 	    	    "device.GNSS", "1.0.0",
 	    	    NavigationSystemARC.PROVIDED_DEVICE
 	    );
+	
 	    SystemConfigurationHelper.bindingToAdd(
 	    	    theInitialSystemConfiguration,
 	    	    "autopilot.L2_PartialAutomation", "1.0.0",
@@ -461,8 +467,10 @@ public class Activator implements BundleActivator {
 			SystemConfigurationHelper.componentToAdd(theInitialSystemConfiguration, "interaction.GeneralWarning", "1.0.0");
 		    SystemConfigurationHelper.componentToAdd(theInitialSystemConfiguration, "interaction.OverheatWarning", "1.0.0");
 			SystemConfigurationHelper.componentToAdd(theInitialSystemConfiguration, "interaction.FrozenWarning", "1.0.0");
-
-		    
+			
+			
+		
+			
 		    SystemConfigurationHelper.bindingToAdd(
 			        theInitialSystemConfiguration,
 			        "autopilot.L3_AdvancedAutomation", "1.0.0",
@@ -470,6 +478,7 @@ public class Activator implements BundleActivator {
 			        "device.CapacitiveFuelSensor", "1.0.0",
 			        FuelSensorARC.PROVIDED_SENSOR
 			    );
+			 
 		    SystemConfigurationHelper.bindingToAdd(
 			        theInitialSystemConfiguration,
 			        "autopilot.L3_AdvancedAutomation", "1.0.0",
@@ -477,6 +486,7 @@ public class Activator implements BundleActivator {
 			        "device.EGTSensor", "1.0.0",
 			        EGTSensorARC.PROVIDED_SENSOR
 			    );
+			
 		    SystemConfigurationHelper.bindingToAdd(
 			        theInitialSystemConfiguration,
 			        "autopilot.L3_AdvancedAutomation", "1.0.0",
@@ -484,13 +494,16 @@ public class Activator implements BundleActivator {
 			        "device.LIDARSensor", "1.0.0",
 			        ProximitySensorARC.PROVIDED_DEVICE
 			    );
-		    SystemConfigurationHelper.bindingToAdd(
-			        theInitialSystemConfiguration,
-			        "autopilot.L3_AdvancedAutomation", "1.0.0",
-			        L3_FlyingServiceARC.REQUIRED_LANDINGSYSTEM,
-			        "device.ILSSystem", "1.0.0",
-			        LandingSystemARC.PROVIDED_DEVICE
-			    );
+			
+			 
+			    SystemConfigurationHelper.bindingToAdd(
+				        theInitialSystemConfiguration,
+				        "autopilot.L3_AdvancedAutomation", "1.0.0",
+				        L3_FlyingServiceARC.REQUIRED_LANDINGSYSTEM,
+				        "device.ILSSystem", "1.0.0",
+				        LandingSystemARC.PROVIDED_DEVICE
+				    );
+			
 		    SystemConfigurationHelper.bindingToAdd(
 			        theInitialSystemConfiguration,
 			        "autopilot.L3_AdvancedAutomation", "1.0.0",
@@ -528,13 +541,14 @@ public class Activator implements BundleActivator {
 		    	    "interaction.TAWS", "1.0.0",
 		    	    TAWSARC.PROVIDED_MECHANISM
 		    	);*/
-		    SystemConfigurationHelper.bindingToAdd(
+			    SystemConfigurationHelper.bindingToAdd(
 		    	    theInitialSystemConfiguration,
 		    	    "autopilot.L3_AdvancedAutomation", "1.0.0",
 			        L3_FlyingServiceARC.REQUIRED_NAVIGATIONSYSTEM,
 		    	    "device.GNSS", "1.0.0",
 		    	    NavigationSystemARC.PROVIDED_DEVICE
 		    );
+		  
 		    SystemConfigurationHelper.bindingToAdd(
 		    	    theInitialSystemConfiguration,
 		    	    "autopilot.L3_AdvancedAutomation", "1.0.0",

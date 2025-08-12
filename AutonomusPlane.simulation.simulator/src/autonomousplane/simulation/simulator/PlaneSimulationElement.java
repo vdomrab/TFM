@@ -71,164 +71,138 @@ public class PlaneSimulationElement extends Thing implements IPlaneSimulation {
 		return time_step;// Default time step is 1 second
 	}
 	@Override
-	public void onSimulationStep(Integer step, long time_lapse_millis) {
-		double timeStepSeconds = this.getTimeStep();
-		this.refreshServices();
-		// Actualizacion de los angulos
-		
-		// Actualizacion de la velocidad 
-		
-		/*if(this.speedSensor != null) {
-			if (this.speedSensor.getSpeedIncrease() != 0 && this.speedSensor.getSpeed() != this.speedSensor.getTargetSpeed()) {
-				this.speedSensor.setSpeed(this.speedSensor.getSpeed() + this.speedSensor.getSpeedIncrease());
-			}else if (this.speedSensor.getSpeed() == this.speedSensor.getTargetSpeed()) {
-				  this.speedSensor.setSpeedIncrease(0.0); // mantén velocidad sin acceleracion
-			}
-		}
-		if(this.altimeterSensor != null && this.radioAltimeterSensor != null && this.navigationSystem != null) {
+	public void onSimulationStep(Integer step, long timeLapseMillis) {
+	    final double dt = PlaneSimulationElement.getTimeStep(); // segundos
+	    this.refreshServices();
 
-		if (this.altimeterSensor.getAltitudeRate() != 0) {
-			this.altimeterSensor.setAltitude(this.altimeterSensor.getAltitude() + this.altimeterSensor.getAltitudeRate());
-			this.radioAltimeterSensor.setGroundAltitude(altimeterSensor.getAltitude());
-			this.navigationSystem.setCurrentFlyghtStage(this.navigationSystem.calculateTheFlyingStage(this.speedSensor.getSpeed()));
-		}else if (this.attitudeSensor.getPitchRate() == 0) {
-			  this.altimeterSensor.setAltitudeRates(0); // mantén velocidad sin acceleracion
-			  this.radioAltimeterSensor.setAltitudeRates(0);
-		}
-		}
-		if(this.speedSensor != null && this.navigationSystem != null) {
-			//Actualizacion de la distancia recorrida
-			if(this.speedSensor.getSpeed() != 0) {
-				 
-				this.navigationSystem.calcualteCurrentDistance(this.speedSensor.getSpeed());
-			}
-		}*/
-	
-		if(this.attitudeSensor != null ) {
-	        double roll = this.attitudeSensor.getRoll();
-	        double yaw = this.attitudeSensor.getYaw();
-			double pitch = this.attitudeSensor.getPitch();
+	    // === 1. Actualización de actitud (pitch, roll, yaw) ===
+	    if (attitudeSensor != null) {
+	        attitudeSensor.setRoll(attitudeSensor.getRoll() + attitudeSensor.getRollRate() * dt);
+	        attitudeSensor.setYaw(attitudeSensor.getYaw() + attitudeSensor.getYawRate() * dt);
+	        attitudeSensor.setPitch(attitudeSensor.getPitch() + attitudeSensor.getPitchRate() * dt);
+	    }
 
-			this.attitudeSensor.setRoll(roll + attitudeSensor.getRollRate() * timeStepSeconds);
-			this.attitudeSensor.setYaw(yaw + attitudeSensor.getYawRate() * timeStepSeconds);
-			this.attitudeSensor.setPitch(pitch + this.attitudeSensor.getPitchRate() * timeStepSeconds);
-		}
-	
-		
-		if(speedSensor != null && weatherSensor != null && fadec != null && attitudeSensor != null && controlSurfaces != null) {
-			double acceleration = speedSensor.getSpeedIncreaseTAS();
-			double deltaSpeedMS = acceleration * timeStepSeconds; // m/s
-		    double currentSpeedTAS = speedSensor.getSpeedTAS() + deltaSpeedMS;
-		  
-		    speedSensor.setSpeedTAS(currentSpeedTAS);
-		    speedSensor.setSpeedGS(
-		        speedSensor.calculateGroundSpeed(
-		            currentSpeedTAS,
-		            weatherSensor.getWindSpeed(),
-		            weatherSensor.getWindDirection()
-		        )
-		    );
-		    
-		}
-		
-		if(speedSensor != null && weatherSensor != null && fadec != null && attitudeSensor != null && controlSurfaces != null && altimeterSensor != null && radioAltimeterSensor != null && navigationSystem != null && aoaSensor != null) {
-			double aoa = this.aoaSensor.calculateAOA(this.speedSensor.getSpeedTAS(), this.altimeterSensor.getVerticalSpeed(), this.attitudeSensor.getPitch());
+	    // === 2. Velocidad TAS y GS ===
+	    if (speedSensor != null && weatherSensor != null && fadec != null && attitudeSensor != null && controlSurfaces != null) {
+	        double newTAS = speedSensor.getSpeedTAS() + (speedSensor.getSpeedIncreaseTAS() * dt);
+	        speedSensor.setSpeedTAS(newTAS);
 
-			double verticalAcceleration = altimeterSensor.calculateVerticalAcceleration(
-		            fadec.getCurrentThrust(),
-		            attitudeSensor.getPitch(),
-		            weatherSensor.getAirDensity(),
-		            speedSensor.getSpeedTAS(),
-		            aoa
-		        );
-			
-			
-			if(radioAltimeterSensor.isOnGround() && attitudeSensor.getPitch() < 0) {
-				attitudeSensor.setPitch(0); // Mantenemos el ángulo de cabeceo en 0
-			}
-			if(radioAltimeterSensor.isOnGround() && verticalAcceleration <= 0 || altimeterSensor.getAltitude() == AltitudeSensor.MAX_ALTITUDE && verticalAcceleration > 0) {
-			        // Si el avión está en tierra y no hay aceleración vertical, mantenemos la altitud y velocidad
-			        altimeterSensor.setVerticalSpeed(0); // Mantén velocidad sin aceleración
-					altimeterSensor.setVerticalAcceleration(0); // Mantén velocidad sin aceleración
-				    altimeterSensor.setAltitude(radioAltimeterSensor.getRealGroundAltitude());
+	        speedSensor.setSpeedGS(
+	            speedSensor.calculateGroundSpeed(
+	                newTAS,
+	                weatherSensor.getWindSpeed(),
+	                weatherSensor.getWindDirection()
+	            )
+	        );
+	    }
 
-			        
-			} else {
-					
-					altimeterSensor.setVerticalAcceleration(verticalAcceleration);
+	    // === 3. Altitud, aceleración vertical y AOA ===
+	    if (speedSensor != null && weatherSensor != null && fadec != null &&
+	        attitudeSensor != null && controlSurfaces != null &&
+	        altimeterSensor != null && radioAltimeterSensor != null &&
+	        navigationSystem != null && aoaSensor != null) {
 
-				    double deltaV = verticalAcceleration * timeStepSeconds;
-				    double newVerticalSpeed = altimeterSensor.getVerticalSpeed() + deltaV;
-				    altimeterSensor.setVerticalSpeed(newVerticalSpeed);
+	        double aoa = aoaSensor.calculateAOA(
+	            speedSensor.getSpeedTAS(),
+	            altimeterSensor.getVerticalSpeed(),
+	            attitudeSensor.getPitch()
+	        );
 
-				    // ✅ Ahora actualizamos la altitud con el nuevo verticalSpeed y deltaTime
-				    double deltaH = altimeterSensor.getVerticalSpeed() * timeStepSeconds;
-				    double newAltitude = altimeterSensor.getAltitude() + deltaH;
-				    if(newAltitude < radioAltimeterSensor.getRealGroundAltitude()) {
-				        newAltitude = radioAltimeterSensor.getRealGroundAltitude(); // No permitir altitud por debajo del mínimo
-				    } 
-				    altimeterSensor.setAltitude(newAltitude);
-				    
-				    radioAltimeterSensor.setGroundDistance(
-				    		RadioAltimeterSensor.calculateGroundDistance(
-				            altimeterSensor.getAltitude(),
-				            radioAltimeterSensor.getRealGroundAltitude()
-				        )
-				    );
+	        double verticalAcc = altimeterSensor.calculateVerticalAcceleration(
+	            fadec.getCurrentThrust(),
+	            attitudeSensor.getPitch(),
+	            weatherSensor.getAirDensity(),
+	            speedSensor.getSpeedTAS(),
+	            aoa
+	        );
 
-				 
-			}
-			if(this.radioAltimeterSensor.getGroundDistance()  > 150.0 && this.proximitySensor != null) {
-				// Si la distancia al suelo es mayor a 150 metros, ya no hay objeto detectado
-				proximitySensor.setObjectDetected(false);
-			} 
-		        
-		}
-			
-		
-		if (speedSensor != null && navigationSystem != null && attitudeSensor != null && radioAltimeterSensor != null) {
-			if(speedSensor.getSpeedGS() != 0 ) {
-				navigationSystem.calcualteCurrentDistance(speedSensor.getSpeedGS() * timeStepSeconds);
-			}
-			if(altimeterSensor != null ) {
-			    double altitude = altimeterSensor.getAltitude() - radioAltimeterSensor.getRealGroundAltitude();
-		    navigationSystem.setCurrentFlyghtStage(
-			        navigationSystem.calculateTheFlyingStage(altitude, 
-			        		navigationSystem.getCurrentDistance(), 
-			        		navigationSystem.getTotalDistance(), 
-			        		attitudeSensor.getPitch()));
+	        // Ajustes en tierra o en altitud máxima
+	        if ((radioAltimeterSensor.isOnGround() && verticalAcc <= 0) ||
+	            (altimeterSensor.getAltitude() == AltitudeSensor.MAX_ALTITUDE && verticalAcc > 0)) {
+	            altimeterSensor.setVerticalSpeed(0);
+	            altimeterSensor.setVerticalAcceleration(0);
+	            altimeterSensor.setAltitude(radioAltimeterSensor.getRealGroundAltitude());
+	        } else {
+	            altimeterSensor.setVerticalAcceleration(verticalAcc);
 
-			}
-		}
+	            // Nueva velocidad vertical
+	            double newVSpeed = altimeterSensor.getVerticalSpeed() + (verticalAcc * dt);
+	            altimeterSensor.setVerticalSpeed(newVSpeed);
 
-		if(this.aoaSensor != null && this.speedSensor != null && this.altimeterSensor != null && this.attitudeSensor != null) {
-			double aoa = this.aoaSensor.calculateAOA(this.speedSensor.getSpeedTAS(), this.altimeterSensor.getVerticalSpeed(), this.attitudeSensor.getPitch());
-			this.aoaSensor.setAOA(aoa);
+	            // Nueva altitud
+	            double newAltitude = altimeterSensor.getAltitude() + (newVSpeed * dt);
+	            if (newAltitude < radioAltimeterSensor.getRealGroundAltitude()) {
+	                newAltitude = radioAltimeterSensor.getRealGroundAltitude();
+	            }
+	            altimeterSensor.setAltitude(newAltitude);
 
-		    
-		}
-		//Actualizacion de la distancia recorrida
-		if(this.fuelSensor != null) {
-			double fuelConsumed = this.fuelSensor.getFuelConsumptionRate() * timeStepSeconds; // Consumo en kg
-			this.fuelSensor.consumeFuel(fuelConsumed); // Actualizar el nivel de combustible
-			// Actualizar el consumo de combustible
-			
-		}
-		
-		
-		if(this.egtSensor != null && this.fadec != null && this.weatherSensor != null && this.attitudeSensor != null && this.controlSurfaces != null && this.speedSensor != null) 
-		{	
-			this.egtSensor.updateTemperature(
-		        fadec.getCurrentThrust(),
-		        weatherSensor.getTemperature(),
-		        weatherSensor.calculatePressureHpa(),
-		        weatherSensor.getHumidity());
-		}
-		
-		
-		
-		
+	            // Distancia al suelo
+	            radioAltimeterSensor.setGroundDistance(
+	                RadioAltimeterSensor.calculateGroundDistance(
+	                    altimeterSensor.getAltitude(),
+	                    radioAltimeterSensor.getRealGroundAltitude()
+	                )
+	            );
+	        }
+
+	        // Mantener pitch en 0 si está en tierra y en actitud descendente
+	        if (radioAltimeterSensor.isOnGround() && attitudeSensor.getPitch() < 0) {
+	            attitudeSensor.setPitch(0);
+	        }
+
+	        // Sensor de proximidad
+	        if (radioAltimeterSensor.getGroundDistance() > 150.0 && proximitySensor != null) {
+	            proximitySensor.setObjectDetected(false);
+	        }
+	    }
+
+	    // === 4. Navegación y etapa de vuelo ===
+	    if (speedSensor != null && navigationSystem != null && attitudeSensor != null && radioAltimeterSensor != null) {
+	        if (speedSensor.getSpeedGS() != 0) {
+	            navigationSystem.calcualteCurrentDistance(speedSensor.getSpeedGS() * dt);
+	        }
+	        if (altimeterSensor != null) {
+	            double altitudeAGL = altimeterSensor.getAltitude() - radioAltimeterSensor.getRealGroundAltitude();
+	            navigationSystem.setCurrentFlyghtStage(
+	                navigationSystem.calculateTheFlyingStage(
+	                    altitudeAGL,
+	                    navigationSystem.getCurrentDistance(),
+	                    navigationSystem.getTotalDistance(),
+	                    attitudeSensor.getPitch()
+	                )
+	            );
+	        }
+	    }
+
+	    // === 5. AOA persistente ===
+	    if (aoaSensor != null && speedSensor != null && altimeterSensor != null && attitudeSensor != null) {
+	        aoaSensor.setAOA(
+	            aoaSensor.calculateAOA(
+	                speedSensor.getSpeedTAS(),
+	                altimeterSensor.getVerticalSpeed(),
+	                attitudeSensor.getPitch()
+	            )
+	        );
+	    }
+
+	    // === 6. Combustible ===
+	    if (fuelSensor != null) {
+	        double fuelConsumed = fuelSensor.getFuelConsumptionRate() * dt;
+	        fuelSensor.consumeFuel(fuelConsumed);
+	    }
+
+	    // === 7. EGT ===
+	    if (egtSensor != null && fadec != null && weatherSensor != null &&
+	        attitudeSensor != null && controlSurfaces != null && speedSensor != null) {
+	        egtSensor.updateTemperature(
+	            fadec.getCurrentThrust(),
+	            weatherSensor.getTemperature(),
+	            weatherSensor.calculatePressureHpa(),
+	            weatherSensor.getHumidity()
+	        );
+	    }
 	}
+
 	
 	private void refreshServices() {
 	        aoaSensor = OSGiUtils.getService(context, IAOASensor.class);
