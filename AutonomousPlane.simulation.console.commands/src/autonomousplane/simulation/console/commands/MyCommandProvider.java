@@ -368,8 +368,6 @@ public class MyCommandProvider {
 			} catch (NumberFormatException e) {
 				System.out.println("Invalid throttle value: " + value);
 			}
-		} else if (property.equalsIgnoreCase("get")) {
-			System.out.println("Current Throttle: " + fadec.getCurrentThrust());
 		} else {
 			System.out.println("Unknown property: " + property);
 		}
@@ -486,7 +484,7 @@ public class MyCommandProvider {
 		}
 
 		if(gnss.getCurrentFlyghtStage() != EFlyingStages.TAKEOFF) {
-			System.out.println("Destination can only be set during TAKEOFF stage.");
+			System.out.println("FlyingStage can only be set during TAKEOFF stage.");
 			return;
 		}
 		System.out.println("Setting flying stage to: " + stage);

@@ -10,6 +10,7 @@ import autonomousplane.devices.interfaces.IETL;
 import autonomousplane.devices.interfaces.IFADEC;
 import autonomousplane.devices.interfaces.IFuelSensor;
 import autonomousplane.devices.interfaces.ILandingSystem;
+import autonomousplane.devices.interfaces.INavigationSystem;
 import autonomousplane.devices.interfaces.IProximitySensor;
 import autonomousplane.devices.interfaces.IRadioAltimeterSensor;
 import autonomousplane.devices.interfaces.ISpeedSensor;
@@ -34,7 +35,7 @@ public class EmergencyLandingFallbackPlanARC extends FallbackPlanARC {
 	public static String REQUIRED_FUELSENSOR = "required_fuelsensor";
 	public static String REQUIRED_WEATHERSENSOR = "required_weathersensor";
 	public static String REQUIRED_NOTIFICATIONSERVICE = "required_notificationservice";
-
+	public static String REQUIRED_NAVIGATIONSYSTEM = "required_navigationSystem";
 	public EmergencyLandingFallbackPlanARC(BundleContext context, String bundleId) {
 		super(context, context.getBundle().getSymbolicName());
 		logger = SmartLogger.getLogger(context.getBundle().getSymbolicName());
@@ -70,6 +71,8 @@ public class EmergencyLandingFallbackPlanARC extends FallbackPlanARC {
 			this.getTheEmergencyLandingFallbackPlanFlyingService().setWeatherSensor((IWeatherSensor) value);
 		} else if (req.equals(REQUIRED_NOTIFICATIONSERVICE)) {
 			this.getTheEmergencyLandingFallbackPlanFlyingService().setNotificationService((INotificationService) value);
+		} else if (req.equals(REQUIRED_NAVIGATIONSYSTEM)) {
+			this.getTheEmergencyLandingFallbackPlanFlyingService().setNavigationSystem((INavigationSystem) value);
 		} else {
 			logger.error("Unknown service required: " + req);
 		}
@@ -102,6 +105,8 @@ public class EmergencyLandingFallbackPlanARC extends FallbackPlanARC {
 			this.getTheEmergencyLandingFallbackPlanFlyingService().setWeatherSensor(null);
 		} else if (req.equals(REQUIRED_NOTIFICATIONSERVICE)) {
 			this.getTheEmergencyLandingFallbackPlanFlyingService().setNotificationService(null);
+		} else if (req.equals(REQUIRED_NAVIGATIONSYSTEM)) {
+			this.getTheEmergencyLandingFallbackPlanFlyingService().setNavigationSystem(null);
 		} else {
 			logger.error("Unknown service required: " + req);
 		}

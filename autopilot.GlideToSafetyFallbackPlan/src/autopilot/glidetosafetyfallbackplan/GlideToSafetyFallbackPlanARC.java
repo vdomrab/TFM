@@ -25,7 +25,7 @@ public class GlideToSafetyFallbackPlanARC extends FallbackPlanARC{
 	public static String REQUIRED_SPEEDSENSOR = "required_speedsensor";
 	public static String REQUIRED_PROXIMITYSENSOR = "required_proximitysensor";
 	public static String REQUIRED_NOTIFICATIONSERVICE = "required_notificationservice";
-
+	public static String REQUIRED_NAVIGATIONSYSTEM = "required_navigationSystem";
 	public GlideToSafetyFallbackPlanARC(BundleContext context, String bundleId) {
 		super(context, context.getBundle().getSymbolicName());
 		logger = SmartLogger.getLogger(context.getBundle().getSymbolicName());
@@ -46,7 +46,6 @@ public class GlideToSafetyFallbackPlanARC extends FallbackPlanARC{
 		} else if(req.equals(REQUIRED_ALTITUDESENSOR)) {
 			this.getTheGlideToSafetyFallbackPlanFlyingService().setAltitudeSensor((IAltitudeSensor) value);
 		} else if(req.equals(REQUIRED_ETL)) {
-			System.out.println("Binding ETL sensor: " + value);
 			this.getTheGlideToSafetyFallbackPlanFlyingService().setETLSensor((IETL) value);		
 		} else if(req.equals(REQUIRED_SPEEDSENSOR)) {
 			this.getTheGlideToSafetyFallbackPlanFlyingService().setSpeedSensor((ISpeedSensor) value);
@@ -54,6 +53,8 @@ public class GlideToSafetyFallbackPlanARC extends FallbackPlanARC{
 			this.getTheGlideToSafetyFallbackPlanFlyingService().setProximitySensor((IProximitySensor) value);
 		} else if(req.equals(REQUIRED_NOTIFICATIONSERVICE)) {
 			this.getTheGlideToSafetyFallbackPlanFlyingService().setNotificationService((autonomousplane.interaction.interfaces.INotificationService) value);
+		} else if(req.equals(REQUIRED_NAVIGATIONSYSTEM)) {
+			this.getTheGlideToSafetyFallbackPlanFlyingService().setNavigationSystem((autonomousplane.devices.interfaces.INavigationSystem) value);
 		} else {
 			logger.error("Unknown service required: " + req);
 		}
@@ -79,6 +80,8 @@ public class GlideToSafetyFallbackPlanARC extends FallbackPlanARC{
 			this.getTheGlideToSafetyFallbackPlanFlyingService().setProximitySensor(null);
 		} else if(req.equals(REQUIRED_NOTIFICATIONSERVICE)) {
 			this.getTheGlideToSafetyFallbackPlanFlyingService().setNotificationService(null);
+		} else if(req.equals(REQUIRED_NAVIGATIONSYSTEM)) {
+			this.getTheGlideToSafetyFallbackPlanFlyingService().setNavigationSystem(null);
 		} else {
 			logger.error("Unknown service required: " + req);
 		}

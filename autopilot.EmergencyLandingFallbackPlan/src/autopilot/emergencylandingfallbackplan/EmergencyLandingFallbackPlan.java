@@ -11,6 +11,7 @@ import autonomousplane.devices.interfaces.IETL;
 import autonomousplane.devices.interfaces.IFADEC;
 import autonomousplane.devices.interfaces.IFuelSensor;
 import autonomousplane.devices.interfaces.ILandingSystem;
+import autonomousplane.devices.interfaces.INavigationSystem;
 import autonomousplane.devices.interfaces.IProximitySensor;
 import autonomousplane.devices.interfaces.IRadioAltimeterSensor;
 import autonomousplane.devices.interfaces.ISpeedSensor;
@@ -31,6 +32,7 @@ public class EmergencyLandingFallbackPlan extends FallbackPlan implements IEmerg
 	private ILandingSystem landingSystem = null;
 	private IFuelSensor fuelSensor = null;
 	private IWeatherSensor weatherSensor = null;
+	private INavigationSystem navigationSystem = null;
 	public EmergencyLandingFallbackPlan(BundleContext context, String id) {
 		super(context, context.getBundle().getSymbolicName());
 		this.addImplementedInterface(IEmergencyLandingFallbackPlan.class.getName());
@@ -53,7 +55,10 @@ public class EmergencyLandingFallbackPlan extends FallbackPlan implements IEmerg
 	public void setAltitudeSensor(IAltitudeSensor altitudeSensor) {
 		this.altitudeSensor = altitudeSensor;
 	}
-
+	@Override
+	public void setNavigationSystem(INavigationSystem navigationSystem) {
+		this.navigationSystem = navigationSystem;
+	}
 	@Override
 	public void setETLSensor(IETL etlSensor) {
 		this.etlSensor = etlSensor;

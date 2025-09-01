@@ -95,7 +95,6 @@ public class L3_IntenseWeatherNavigation extends L3_FlyingService implements IL3
 	    boolean correctionRequired = false;
 
 		if (this.getEGTSensor().getTemperature() > EGTSensor.OVERHEAT_THRESHOLD_C) {
-			System.out.println("Engine temperature: " + notificationService.isMechanismAvailable("OverheatWarning"));
 	    	 if(notificationService != null && notificationService.isMechanismAvailable("OverheatWarning")) {
 	             this.getNotificationService().notify("⚠️ Engine overheat detected! Cooling system activated.", "OverheatWarning");
 	             if(this.getFallbackPlan() != null && this.getFallbackPlan() instanceof IThermalFallbackPlan) {

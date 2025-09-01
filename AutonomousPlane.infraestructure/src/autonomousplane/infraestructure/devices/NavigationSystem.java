@@ -71,58 +71,7 @@ public class NavigationSystem extends Thing implements INavigationSystem{
 		return (EFlyingStages) this.getProperty(CURRENT_FLYGHT_STAGE);
 	}
 	
-	/*public EFlyingStages calculateTheFlyingStage(double altitude) {
-		double verticalSpeed = -5.0; // Placeholder for actual vertical speed, should be set based on real data
-	    final double TAKEOFF_DISTANCE_THRESHOLD = 2500.0;   // meters
-	    final double CLIMB_START_DISTANCE = 2500.0;
-	    final double LANDING_ALTITUDE_THRESHOLD = 600.0;    // meters (updated as per your suggestion)
-
-	    double currentDistance = this.getCurrentDistance();
-	    double totalDistance = this.getTotalDistance();
-	    double horizontalDistanceRemaining = totalDistance - currentDistance;
-
-	    EFlyingStages currentStage = this.getCurrentFlyghtStage();
-
-	    // Use vertical speed to estimate descent distance
-	    double timeToDescend = (altitude + LANDING_ALTITUDE_THRESHOLD) / Math.abs(verticalSpeed); // seconds
-	    double averageGroundSpeed = 94; 
-	    double requiredDescentDistance = averageGroundSpeed * timeToDescend;
-	    System.out.println("Required descent distance: " + requiredDescentDistance + " meters");
-	    System.out.println("Current distance: " + currentDistance + " meters");
-	    System.out.println("Remaining distance: " + horizontalDistanceRemaining + " meters");
-	    System.out.println("currentDistance >= CLIMB_START_DISTANCE: " + (currentDistance >= CLIMB_START_DISTANCE));
-	    System.out.println("altitude <= 9000: " + (altitude <= 9000));
-	    System.out.println("getCurrentFlyghtStage() == EFlyingStages.TAKEOFF: " + (this.getCurrentFlyghtStage() == EFlyingStages.TAKEOFF));
-	    System.out.println("horizontalDistanceRemaining > requiredDescentDistance: " + (horizontalDistanceRemaining > requiredDescentDistance));
-	    // --- Stable phase logic ---
-	    if (currentStage == EFlyingStages.DESCENT || currentStage == EFlyingStages.LANDING) {
-	        if (currentDistance > 0 && horizontalDistanceRemaining <= 5000) {
-	            return EFlyingStages.LANDING;
-	        }
-	        return EFlyingStages.DESCENT;
-	    }
-
-	    if (currentDistance < TAKEOFF_DISTANCE_THRESHOLD) {
-	        return EFlyingStages.TAKEOFF;
-	    }
-	    
-	    if (currentDistance >= CLIMB_START_DISTANCE && altitude <= 9000 && this.getCurrentFlyghtStage() == EFlyingStages.TAKEOFF && horizontalDistanceRemaining > requiredDescentDistance) {
-	        return EFlyingStages.CLIMB;
-	    }
-
-	    if (horizontalDistanceRemaining > requiredDescentDistance && altitude > 9000) {
-	        return EFlyingStages.CRUISE;
-	    }
-
-	    // Start descent when needed
-	    if (horizontalDistanceRemaining <= requiredDescentDistance && altitude > LANDING_ALTITUDE_THRESHOLD) {
-	        return EFlyingStages.DESCENT;
-	    }
-
-	    // Fallback
-	    return currentStage;
-	}
-	*/
+	
 	public EFlyingStages calculateTheFlyingStage(double altitude, double currentDistance, double totalDistance, double pitch) {
 	    double verticalSpeed = -5.0; // como placeholder
 

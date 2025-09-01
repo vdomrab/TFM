@@ -52,7 +52,6 @@ public class Activator implements BundleActivator {
 					// 
 					//  Modo uso
 					//				      engine-failure [ set ] [ boolean ]
-					//				      engine-failure [ get ]
 					//  Permite activar o desactivar el estado de fallo del motor a través del sistema FADEC.
 					//  Al establecerlo en `true`, se simula un fallo de motor; en `false`, se restablece 
 					//  el funcionamiento normal.
@@ -61,21 +60,22 @@ public class Activator implements BundleActivator {
 					//
 					//  Modo uso
 					//		terrain-altitude [ set ]  [ double ]
-					//		terrain-altitude [ get ]
 					//  Permite aumentarse o disminuir la altitud del terreno y consultaral
 					"terrainAltitude",
 					
-					// destination : establece el destino de navegación del sistema GNSS
-				    //
-				    //  Modo uso
-				    //      destination [ String ]
-				    //
-				    //  Permite configurar el destino de vuelo del sistema de navegación (INavigationSystem).
-				    //  Al establecer un destino reconocido, se asigna automáticamente la distancia total a recorrer.
-				    //  Actualmente solo está soportado: "Castellon" (65 km).
-				    //
-				    //  Ejemplo:
-				    //      destination Castellon
+					// flyingStage : establece la fase actual de vuelo del sistema GNSS
+					//
+					//  Modo uso
+					//					      flyingStage [ takeoff | landing | cruise | climb | descent ]
+					//
+					//  Permite configurar de manera integral el estado del avión en función de 
+					//  la fase de vuelo seleccionada. Cada etapa inicializa parámetros clave como 
+					//  altitud, velocidad, empuje del motor (FADEC), y distancias en sensores 
+					//  de altitud y radioaltímetro.
+					//
+					//  Ejemplos:
+					//					      flyingStage takeoff   // inicia el despegue con todos los sensores en 0
+					//					      flyingStage cruise    // establece vuelo de crucero a 10.000 m y 230 TAS
 					"flyingStage",
 					// climate : establece las condiciones climáticas generales en el entorno de simulación
 					//
@@ -97,14 +97,12 @@ public class Activator implements BundleActivator {
 					//
 					//  Modo uso
 					//		 groundTemperature set [ double ]
-					//		 groundTemperature get
 					//
 					//  Permite leer o modificar la temperatura del terreno registrada por el sensor climático (IWeatherSensor).
 					//  El valor de temperatura debe proporcionarse en grados Celsius cuando se usa el modo "set".
 					//
 					//  Ejemplos:
 					//					      groundTemperature set 22.5
-					//					      groundTemperature get
 					"groundTemperature",
 					// fuelLevel : establece el nivel de combustible del avión durante la fase de despegue
 					//
@@ -183,7 +181,6 @@ public class Activator implements BundleActivator {
 					//
 					//  Modo uso
 					//		acceleration [ set ] [String] [ double ]
-					//		acceleration [ get ] [String]
 					// Ejemplo: acceleration 10
 					"thrust", 
 					// setCooling : activa o desactiva el sistema de refrigeración del motor.

@@ -48,7 +48,6 @@ public class L3_LowFuelConsumption extends L3_FlyingService implements IL3_Advan
 	public IFlyingService performTheFlyingFunction() {
 		if(checkServices()) {
 					    logger.info("Performing flying function in L3_LowFuelConsumption.");
-					    System.out.println("Current Thrust: MONICIUS");
 
 		    boolean correctionRequired = false;
 		    this.setLowFuelMode(); // Ensure low fuel mode is set
@@ -99,7 +98,6 @@ public class L3_LowFuelConsumption extends L3_FlyingService implements IL3_Advan
 	    boolean correctionRequired = false;
 
 		if (this.getEGTSensor().getTemperature() > EGTSensor.OVERHEAT_THRESHOLD_C) {
-			System.out.println("Engine temperature: " + notificationService.isMechanismAvailable("OverheatWarning"));
 	    	 if(notificationService != null && notificationService.isMechanismAvailable("OverheatWarning")) {
 	             this.getNotificationService().notify("⚠️ Engine overheat detected! Cooling system activated.", "OverheatWarning");
 	             if(this.getFallbackPlan() != null && this.getFallbackPlan() instanceof IThermalFallbackPlan) {
@@ -462,7 +460,6 @@ public class L3_LowFuelConsumption extends L3_FlyingService implements IL3_Advan
 
 
 	    // Full thrust during takeoff
-	    System.out.println("Current Thrust: " + this.getFADEC().getCurrentThrust());
 	    if (this.getFADEC().getCurrentThrust() < 91.0) {
 	        this.getFADEC().setTHRUSTPercentage(91.0);
 	        logger.info("TAKEOFF: Setting full thrust (91%).");

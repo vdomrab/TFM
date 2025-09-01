@@ -84,7 +84,7 @@ public class StallRecoveryFallbackPlan extends FallbackPlan implements IStallRec
 
 	    // 3. Si estamos en pérdida...
 	    if (inStall && pitch >= 0) {
-	    	System.out.println("Stall detected! Current AOA: " + currentAOA + " degrees AAAAAAAAAAAAAAAAA");
+	    	logger.info("Stall detected! Current AOA: " + currentAOA + " degrees");
 	        double targetAOA = 10.0; // Objetivo seguro por debajo del stall
 	        double deltaPitchRequired = targetAOA - currentAOA; // Aproximamos que deltaPitch ≈ deltaAOA
 

@@ -107,7 +107,6 @@ public class FuelSensor extends Thing implements IFuelSensor {
     public double getFuelConsumptionRatePercentage() {
     	double rate = getFuelConsumptionRate();
     	if (rate < 0 || rate > MAX_FLOW_RATE_KG_PER_SEC) {
-			System.out.println("Fuel consumption rate must be between 0 and " + MAX_FLOW_RATE_KG_PER_SEC + " kg/s");
 			return 0.0;
 		}
     	return (rate / MAX_FLOW_RATE_KG_PER_SEC) * 100.0;
@@ -131,7 +130,6 @@ public class FuelSensor extends Thing implements IFuelSensor {
     @Override
     public IFuelSensor setFuelLevel(double level) {
 		if (level < MIN_FUEL_LEVEL || level > MAX_FUEL_KG) {
-			System.out.println("Fuel level must be between " + MIN_FUEL_LEVEL + " and " + MAX_FUEL_KG + " kg");
 			return this;
 		}
 		this.setProperty(FUEL_LEVEL, level);
@@ -141,7 +139,6 @@ public class FuelSensor extends Thing implements IFuelSensor {
     @Override
 	public IFuelSensor setFuelPercentage(double percentage) {
 		if (percentage < 0 || percentage > 100) {
-			System.out.println("Value must be between 0 and 100");
 			return this;
 		}
 		double level = (percentage / 100.0) * MAX_FUEL_KG;

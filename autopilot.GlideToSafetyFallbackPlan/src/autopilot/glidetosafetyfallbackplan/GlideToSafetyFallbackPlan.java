@@ -8,6 +8,7 @@ import autonomousplane.devices.interfaces.IAltitudeSensor;
 import autonomousplane.devices.interfaces.IAttitudeSensor;
 import autonomousplane.devices.interfaces.IControlSurfaces;
 import autonomousplane.devices.interfaces.IETL;
+import autonomousplane.devices.interfaces.INavigationSystem;
 import autonomousplane.devices.interfaces.IProximitySensor;
 import autonomousplane.devices.interfaces.IRadioAltimeterSensor;
 import autonomousplane.devices.interfaces.ISpeedSensor;
@@ -24,7 +25,7 @@ public class GlideToSafetyFallbackPlan extends FallbackPlan implements IGlideToS
 	private IETL etlSensor = null;
 	private ISpeedSensor speedSensor = null;
 	private IProximitySensor proximitySensor = null;
-	
+	private INavigationSystem navigationSystem = null;
 	public GlideToSafetyFallbackPlan(BundleContext context, String id) {
 		super(context, context.getBundle().getSymbolicName());
 		logger = SmartLogger.getLogger(context.getBundle().getSymbolicName());
@@ -40,7 +41,10 @@ public class GlideToSafetyFallbackPlan extends FallbackPlan implements IGlideToS
 	public void setControlSurfaces(IControlSurfaces controlSurfaces) {
 		this.controlSurfaces = controlSurfaces;
 	}
-
+	@Override
+	public void setNavigationSystem(INavigationSystem navigationSystem) {
+		this.navigationSystem = navigationSystem;
+	}
 	@Override
 	public void setAttitudeSensor(IAttitudeSensor attitudeSensor) {
 		this.attitudeSensor = attitudeSensor;

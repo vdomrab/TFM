@@ -100,7 +100,7 @@ public class Activator implements BundleActivator {
 		BasicMAPEKLiteLoopHelper.addInitialSelfConfigurationCapabilities(createMySystemConfiguration());
 		
 		// ADAPTATION PROPERTIES
-		IKnowledgeProperty theRoadType = BasicMAPEKLiteLoopHelper.createKnowledgeProperty("aoa_value");
+		IKnowledgeProperty theAoaValue = BasicMAPEKLiteLoopHelper.createKnowledgeProperty("aoa_value");
 		IKnowledgeProperty theAutonomusType = BasicMAPEKLiteLoopHelper.createKnowledgeProperty("autonomus_type");
 		IKnowledgeProperty component_status = BasicMAPEKLiteLoopHelper.createKnowledgeProperty("component_status");
 		IKnowledgeProperty fallbackPlan = BasicMAPEKLiteLoopHelper.createKnowledgeProperty("fallback_plan_type");

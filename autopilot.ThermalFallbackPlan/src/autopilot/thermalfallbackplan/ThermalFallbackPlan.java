@@ -42,6 +42,7 @@ public class ThermalFallbackPlan extends FallbackPlan implements IThermalFallbac
 
 	@Override
 	public IFlyingService performTheFlyingFunction() {
+		logger.info("Thermal Fallback Plan: Performing thermal recovery maneuvers.");
 
 		// Implement the logic for the thermal fallback plan
 		if (checkRequirementsToPerformTheFlyingService() == false) {

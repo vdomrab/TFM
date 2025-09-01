@@ -50,45 +50,43 @@ public class L3_AdvancedAutomation extends L3_FlyingService implements IL3_Advan
 	public IFlyingService performTheFlyingFunction() {
 	    if(checkServices()) {
 		    logger.info("Performing advanced automation...");
-
-	    boolean correctionRequired = false;
-	    this.setLowFuelMode(); // Ensure low fuel mode is set
-	    double pitch = this.AHRSSensor.getPitch();
-	    double roll = this.AHRSSensor.getRoll();
-        EFlyingStages stage = this.navigationSystem.getCurrentFlyghtStage();
-        correctionRequired |= handleEngineFailure();
-        correctionRequired |= checkTerrainAwareness(stage, radioAltimeterSensor.getGroundDistance(), altimeterSensor.getVerticalSpeed());
-        correctionRequired |= handleStallWarnings();
-        correctionRequired |= hangleEngineHeating();
-        correctionRequired |= handleLowFuel();
-        correctionRequired |= handleObjectsProximity(this.getProximitySensor().isObjectDetected());
-	    if (this.getStabilityModeActive()) {
-	        correctionRequired |= correctRollIfNeeded(roll);
-	        System.out.println("Stage : " + stage + " degrees");
-	        switch (stage) {
-	            case CLIMB:
-	                correctionRequired |= handleClimbPhase(pitch);
-	                break;
-	            case DESCENT:
-	                manageDescentAndApproach();
-	                break;
-	            case CRUISE:
-	                adjustPitchThrustToMaintainAltitudeAndSpeedCruise();
-	                break;
-	            case TAKEOFF:
-	               correctionRequired |= handleTakeoffPhase(pitch);
-	                break;
-	            case LANDING:
-	                manageDescentAndApproach();
-	                break;
-	            default:
-	                break; // Other phases ignored here
-	        }
-	    }
-	       
-	        if (!correctionRequired) {
-	            logger.info("Monitoring flying parameters. Nothing to warn ...");
-	        }
+		  	boolean correctionRequired = false;
+		    this.setLowFuelMode(); // Ensure low fuel mode is set
+		    double pitch = this.AHRSSensor.getPitch();
+		    double roll = this.AHRSSensor.getRoll();
+	        EFlyingStages stage = this.navigationSystem.getCurrentFlyghtStage();
+	        correctionRequired |= handleEngineFailure();
+	        correctionRequired |= checkTerrainAwareness(stage, radioAltimeterSensor.getGroundDistance(), altimeterSensor.getVerticalSpeed());
+	        correctionRequired |= handleStallWarnings();
+	        correctionRequired |= hangleEngineHeating();
+	        correctionRequired |= handleLowFuel();
+	        correctionRequired |= handleObjectsProximity(this.getProximitySensor().isObjectDetected());
+		    if (this.getStabilityModeActive()) {
+		        correctionRequired |= correctRollIfNeeded(roll);
+		        switch (stage) {
+		            case CLIMB:
+		                correctionRequired |= handleClimbPhase(pitch);
+		                break;
+		            case DESCENT:
+		                manageDescentAndApproach();
+		                break;
+		            case CRUISE:
+		                adjustPitchThrustToMaintainAltitudeAndSpeedCruise();
+		                break;
+		            case TAKEOFF:
+		               correctionRequired |= handleTakeoffPhase(pitch);
+		                break;
+		            case LANDING:
+		                manageDescentAndApproach();
+		                break;
+		            default:
+		                break; // Other phases ignored here
+		        }
+		    }
+		       
+		    if (!correctionRequired) {
+		            logger.info("Monitoring flying parameters. Nothing to warn ...");
+		    }
 	    
 	    } else {
 	        logger.error("Cannot perform flying function missing essential components.");
@@ -99,7 +97,6 @@ public class L3_AdvancedAutomation extends L3_FlyingService implements IL3_Advan
 	    boolean correctionRequired = false;
 
 		if (this.getEGTSensor().getTemperature() > EGTSensor.OVERHEAT_THRESHOLD_C) {
-			System.out.println("Engine temperature: " + notificationService.isMechanismAvailable("OverheatWarning"));
 	    	 if(notificationService != null && notificationService.isMechanismAvailable("OverheatWarning")) {
 	             this.getNotificationService().notify("⚠️ Engine overheat detected! Cooling system activated.", "OverheatWarning");
 	             if(this.getFallbackPlan() != null && this.getFallbackPlan() instanceof IThermalFallbackPlan) {
@@ -126,12 +123,10 @@ public class L3_AdvancedAutomation extends L3_FlyingService implements IL3_Advan
 	    double fuelLevel = fuelSensor.getFuelLevel();
 	    double estimatedRange = fuelSensor.getEstimatedRangeMeters(this.getSpeedSensor().getSpeedTAS()); // True Airspeed in m/s
 	    double distanceToAirport = this.getNavigationSystem().getTotalDistance()- this.getNavigationSystem().getCurrentDistance();// meters
-	    System.out.println("Fuel level: " + fuelLevel + " meters, Estimated range: " + estimatedRange + " meters, Distance to airport: " + distanceToAirport + " meters");
 	    if (fuelLevel < 3000.0 && estimatedRange < 1.5 * distanceToAirport) {
 	    	 if(notificationService != null && notificationService.isMechanismAvailable("LowFuelWarning")) {
 		    	     this.getNotificationService().notify("⚠️ Critical fuel warning! Estimated range: " + estimatedRange + " meters.", "LowFuelWarning");
 	    	 }
-	    	 System.out.println("Fuel level: " + fuelLevel + " meters, Estimated range: " + estimatedRange + " meters, Distance to airport: " + distanceToAirport + " meters");
 	    	 if(this.getFallbackPlan() != null && this.getFallbackPlan() instanceof IEmergencyLandingFallbackPlan) {
 	             correctionRequired = true; // Indica que se ha activado el plan de contingencia
 	             logger.info("Activating fallback plan due to critical fuel level.");

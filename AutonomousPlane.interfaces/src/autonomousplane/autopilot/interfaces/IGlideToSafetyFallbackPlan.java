@@ -4,6 +4,7 @@ import autonomousplane.devices.interfaces.IAltitudeSensor;
 import autonomousplane.devices.interfaces.IAttitudeSensor;
 import autonomousplane.devices.interfaces.IControlSurfaces;
 import autonomousplane.devices.interfaces.IETL;
+import autonomousplane.devices.interfaces.INavigationSystem;
 import autonomousplane.devices.interfaces.IProximitySensor;
 import autonomousplane.devices.interfaces.IRadioAltimeterSensor;
 import autonomousplane.devices.interfaces.ISpeedSensor;
@@ -24,5 +25,6 @@ public interface IGlideToSafetyFallbackPlan extends IFallbackPlan {
 	
 	void setProximitySensor(IProximitySensor lidarSensor);
 
+	void setNavigationSystem(INavigationSystem navigationSystem);
 
 }
